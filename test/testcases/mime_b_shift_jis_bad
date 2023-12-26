@@ -1,0 +1,9 @@
+Subject: =?iso-2022-jp?B?gqiJ1Iyp?=
+To: user@example.com
+From: user@example.com
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+mime-b charset is is-2022-jp
+encoded code is shift-jis

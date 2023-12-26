@@ -1,4 +1,4 @@
-## -*-Ruby-*- $Id: test.rb,v 1.3 2006/01/27 14:14:54 nabeken Exp $
+## -*-Ruby-*- $Id: test.rb,v 1.4 2006/04/02 06:45:12 nabeken Exp $
 ## this file is written in eucJP
 
 load '../bsfilter/bsfilter'
@@ -483,18 +483,116 @@ end
 class TestHeaderParser < Test::Unit::TestCase
   def setup
     @bsfilter = Bsfilter::new
-    @bsfilter.setup($default_options)
-    @bsfilter.use_dummyfh
   end
 
   def test_header_parser
     @files = ["testcases/header"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
     @bsfilter.run(@files)
     assert_equal(1, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
     assert_equal(1, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
     assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3") # drop 2nd hop
     assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh") # drop ID
-    assert_equal(0, @bsfilter.count_message(/signaturebody/), "signaturebody") # drop signature
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject") # refer subject
+    assert_equal(0, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date") # ignore date
+  end
+
+  def test_ignore_header
+    @files = ["testcases/header"]
+    @bsfilter.setup($default_options + ["--ignore-header"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3")
+    assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date")
+  end
+
+  def test_refer_header_null
+    @files = ["testcases/header"]
+    @bsfilter.setup($default_options + ["--refer-header", ""])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3")
+    assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date")
+  end
+
+  def test_refer_header_subject
+    @files = ["testcases/header"]
+    @bsfilter.setup($default_options + ["--refer-header", "subject"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3")
+    assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date")
+  end
+
+  def test_refer_header_date
+    @files = ["testcases/header"]
+    @bsfilter.setup($default_options + ["--refer-header", "date"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3")
+    assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject")
+    assert_equal(9, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date") # date header has 9 tokens
+  end
+
+  def test_refer_header_subject_date
+    @files = ["testcases/header"]
+    @bsfilter.setup($default_options + ["--refer-header", "subject,date"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host1/), "^tokenizer received host1")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host2/), "^tokenizer received host2")
+    assert_equal(0, @bsfilter.count_message(/^tokenizer received host3/), "^tokenizer received host3")
+    assert_equal(0, @bsfilter.count_message(/abcdefgh/), "abcdefgh")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject/), "^tokenizer subject")
+    assert_equal(9, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date")
+  end
+
+  def test_mime_b_iso_2022_jp
+    @files = ["testcases/mime_b_iso_2022_jp"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+  end
+
+  def test_mime_b_iso_2202_jp
+    @files = ["testcases/mime_b_iso_2202_jp"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+  end
+
+  def test_mime_b_shift_jis
+    @files = ["testcases/mime_b_shift_jis"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+  end
+
+  def test_mime_b_shift_jis_bad
+    @files = ["testcases/mime_b_shift_jis_bad"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
   end
 
   def teardown
@@ -607,7 +705,7 @@ class TestTokenizerOptionCombination < Test::Unit::TestCase
   def test_all
     i = 0
     imax = 2 ** @option_elements.length
-p
+
     while (i < imax)
       j = 0
       option_array = Array::new

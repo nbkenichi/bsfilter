@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.77 2006/01/27 14:14:05 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.78 2006/04/02 04:40:09 nabeken Exp $
 
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
@@ -30,9 +30,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_12 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_13 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.77 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.78 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
 
 ##  Options = Hash::new           # used like a global variable
@@ -40,6 +40,9 @@ class Bsfilter
   
   Default_header_prefix = "Spam"
   Default_spam_subject_prefix = "[SPAM] "
+  Default_refer_header = 
+    ["Ufrom", "From", "To", "Cc", "Subject", "Reply-to", "Return-path", "Received",
+     "Content-Transfer-Encoding", "Content-Type", "charset", "Content-Disposition"].join(",")
   
   Default_jtokenizer = "bigram"
   Default_mark_in_token = "|!*'"
@@ -108,7 +111,6 @@ class Bsfilter
   
   RE_ALL_TAGS = Regexp::compile('\A<(' + ALL_TAGS + ')\b', Regexp::IGNORECASE, 'n')
   RE_SPACE_TAGS = Regexp::compile('\A<(' + SPACE_TAGS + ')\b', Regexp::IGNORECASE, 'n')
-  
   
   SOCKET_TIMEOUT = 30             # for single socket operation
   
@@ -1157,9 +1159,7 @@ EOM
 
 #    "authentication-results", "domainkey-signature"
     headers.each do |header, content|
-      case header
-      when "ufrom", "from", "to", "cc", "subject", "reply-to", "return-path",
-           "content-transfer-encoding", "content-type", "content-disposition", "charset", "received"
+      if (@options["refer-header"][header])
         if (lang == "ja")
           content.gsub!(/=\?utf\-8\?([bq])\?(\S*)\?=/i) do |s|
             b_or_q = $1
@@ -1175,7 +1175,7 @@ EOM
               ""
             end
           end
-          content = NKF::nkf('-e -X -Z0', content.gsub(/\?iso-2202-jp\?/i, '?ISO-2022-JP?'))
+          content = NKF::nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?'))
         else
           content = latin2ascii(content)
         end
@@ -1211,7 +1211,7 @@ EOM
     body_db.message_id = headers["message-id"] || "-"
     
     sub_head_db = TokenDB::new(lang)
-    main_head_db = tokenize_headers(lang, headers) if (@options["use-header"])
+    main_head_db = tokenize_headers(lang, headers)
     lang = main_head_db.language if main_head_db
     
     found_html_part = false
@@ -1234,7 +1234,7 @@ EOM
         end
       end
       (headers, buf, lang) = get_headers(buf, lang)
-      db = tokenize_headers(lang, headers) if (@options["use-header"])
+      db = tokenize_headers(lang, headers)
       sub_head_db.add_db(db)
     end
     
@@ -1251,8 +1251,8 @@ EOM
       end
     end
     
-    body_db.add_db(main_head_db) if (@options["use-header"])
-    body_db.add_db(sub_head_db) if (@options["use-header"])
+    body_db.add_db(main_head_db)
+    body_db.add_db(sub_head_db)
     body_db.file_count = 1
     body_db.time = Time::new
     body_db.language = "C" if (! body_db.language)
@@ -1351,6 +1351,21 @@ EOM
     return [body_hash, url_hash]
   end
   
+  def base64_encoded?(buf)
+    [buf.dup, buf.reverse].each do |b|
+      while (str = b.shift)
+        if (str =~ /\A[\s\r\n]*\z/)
+          next
+        elsif (str =~ /\A[A-z0-9=+\/]+[\s\r\n]*\z/)
+          break
+        else
+          return false
+        end
+      end
+    end
+    return true
+  end
+
   def tokenize_body(lang, headers, body, separators, delimiters)
     reg_return_codes = Regexp::compile('[\r\n]*\z')
     
@@ -1387,10 +1402,10 @@ EOM
     end
     
     case headers["content-transfer-encoding"]
-    when /bit/i
-      ##
     when /base64/i
-      buf.map! {|str| str.unpack("m*").to_s}
+      if (base64_encoded?(buf))
+        buf.map! {|str| str.unpack("m*").to_s}
+      end
     when /quoted-printable/i
       buf.map! {|str| str.unpack("M*").to_s}
     end
@@ -1406,7 +1421,8 @@ EOM
     end
 
     str = buf.join
-    
+    str.gsub!(/^begin[^\r\n]+(([\r\n]+M)([^\r\n]+))*/, '') # remove uuencoded lines
+
     if (lang == "ja")
       if (code == "utf8")
         if (@options["utf-8"])
@@ -2014,8 +2030,14 @@ OPTIONS
         --disable-utf-8
                 disable utf-8 support
 
+	--refer-header header[,header...]
+		refer specified headers of mails
+		"#{Default_refer_header}"
+		by default
+
 	--ignore-header|-H
 		ignore headers of mails
+		same as --refer-header ""
 
 	--ignore-body|-B
 		ignore body of mails, except URL or mail address
@@ -2940,6 +2962,7 @@ EOM
                        ["--disable-degeneration", "-D", GetoptLong::NO_ARGUMENT],
                        ["--disable-utf-8", GetoptLong::NO_ARGUMENT],
                        ["--ignore-body", "-B", GetoptLong::NO_ARGUMENT],
+                       ["--refer-header", GetoptLong::REQUIRED_ARGUMENT],
                        ["--ignore-header", "-H", GetoptLong::NO_ARGUMENT],
                        ["--ignore-plain-text-part", GetoptLong::NO_ARGUMENT],
                        ["--ignore-after-last-atag", GetoptLong::NO_ARGUMENT],
@@ -3077,7 +3100,19 @@ EOM
     options["min-mail"] = (options["min-mail"] || Default_min_mail).to_i
     
     options["degeneration"] = options["disable-degeneration"] ? false : true
-    options["use-header"] = options["ignore-header"] ? false : true
+
+    if (options["refer-header"])
+      array = options["refer-header"].downcase.split(',')
+    elsif (options["ignore-header"])
+      array = Array::new
+    else
+      array = Default_refer_header.downcase.split(',')
+    end
+    options["refer-header"] = Hash::new
+    array.each do |header|
+      options["refer-header"][header] = true
+    end
+
     options["use-body"] = options["ignore-body"] ? false : true
     
     options["pid-file"] = options["homedir"] + Default_pid_file if (! options["pid-file"]) 

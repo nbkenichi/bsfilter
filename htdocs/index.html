@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.35 2006/01/28 16:49:41 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.37 2006/04/16 05:14:02 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / ¥Ù¥¤¥¸¥¢¥ó ¥¹¥Ñ¥à ¥Õ¥£¥ë¥¿</h1>
 
 <p class="icon">
@@ -63,7 +63,7 @@
 
 <h2><a id="download">2. ¥À¥¦¥ó¥í¡¼¥É/¥¤¥ó¥¹¥È¡¼¥ë</a></h2>
 <ul>
-<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.12.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.13.tgz</strong></a></li>
 <li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVS¥¢¥¯¥»¥¹</strong></a></li>
 </ul>
 <h3>2.1. UNIX·Ï¤Î¾ì¹ç</h3>
@@ -266,9 +266,14 @@ Gary Robinson-FisherÊı¼°¤Ë½Ú¤º¤ë¤«(rf)¤ò»ØÄê¤¹¤ë¡£
 <dt>--disable-utf-8</dt>
 <dd>utf-8¥µ¥İ¡¼¥È¤òÍŞ»ß¤¹¤ë¡£</dd>
 
+<dt>--refer-header header[,header...]</dt>
+<dd>»²¾È¤¹¤ë¥Ø¥Ã¥À¤ò»ØÄê¤¹¤ë¡£Ê£¿ô»ØÄê¤¹¤ë¾ì¹ç¤Ï¡¢¥¹¥Ú¡¼¥¹¤òÆş¤ì¤º¤Ë¥³¥ó¥Ş¤Ç¶èÀÚ¤êÍåÎó¤¹¤ë¡£¥Ç¥Õ¥©¥ë¥È¤Ï
+"Ufrom,From,To,Cc,Subject,Reply-to,Return-path,Received,Content-Transfer-Encoding,Content-Type,charset,Content-Disposition"
+¤ò»ØÄê¤·¤¿¤Î¤ÈÆ±¤¸¡£</dd>
+
 <dt>--ignore-header</dt>
 <dt>-H</dt>
-<dd>¥á¡¼¥ë¥Ø¥Ã¥À¤òÌµ»ë¤¹¤ë¡£</dd>
+<dd>¥á¡¼¥ë¥Ø¥Ã¥À¤òÌµ»ë¤¹¤ë¡£--refer-header ""¤ò»ØÄê¤·¤¿¤Î¤ÈÆ±¤¸¡£</dd>
 
 <dt>--ignore-body</dt>
 <dt>-B</dt>
@@ -642,7 +647,8 @@ bsfilter¤¬É½¼¨¤¹¤ë¥á¡¼¥ë¤ÎÈÖ¹æ¤È¡¢MUA¤Ç¤ÎÈÖ¹æ¤¬¿©¤¤°ã¤¦¾ã³²¤¬È¯À¸¤¹¤ë¤È»×¤ï¤ì¤ë¡
 
 <li>bsfilter¤Ë¤Ä¤¤¤Æ<ul>
 <li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilter¥Õ¥©¡¼¥é¥à</strong></a></li>
-<li><a href="http://www.nanashinonozomi.com/tdiary/20051105.html#p02"><strong>Windows ÈÇ Sylpheed ¤Ç bsfilter ¤ò»È¤¦</strong></a></li>
+<li><a href="http://sylpheed.good-day.net/"><strong>Sylpheed   - lightweight and user-friendly e-mail client -</strong></a> bsfilter¤ò¸Æ¤Ó½Ğ¤¹ÀßÄê¤âÉ¸½à¤ÇÍÑ°Õ¤µ¤ì¤Æ¤¤¤ë</li>
+<li><a href="http://kiw.paslog.jp/article/123343.html"><strong>JunkMailControl Plugin for EdMax</strong> ÀâÌÀ¤Ç»ÈÍÑ¤µ¤ì¤Æ¤¤¤ë³°Éô¥×¥í¥°¥é¥à¤¬bsfilterw.exe</a></li>
 <li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html">bsfilter</a> qmail¤Ç»È¤¦ÊıË¡¤¬ºÜ¤Ã¤Æ¤¤¤ë</li>
 <li><a href="http://www.wikiroom.com/mew/?Mew4FAQ">Mew4 FAQ</a> mew¤«¤éPOP proxy¤È¤·¤Æ»È¤¦ÊıË¡¤¬ºÜ¤Ã¤Æ¤¤¤ë</li>
 <li><a href="http://www.fkimura.com/bsfilter0.html">bsfilter¤òÆ³ÆşÍøÍÑ¤·¤Æ¤ß¤ë¥á¥â</a></li>

@@ -1,4 +1,4 @@
-## -*-Ruby-*- $Id: test.rb,v 1.5 2006/05/03 12:40:57 nabeken Exp $
+## -*-Ruby-*- $Id: test.rb,v 1.6 2006/09/17 10:51:26 nabeken Exp $
 ## this file is written in eucJP
 
 load '../bsfilter/bsfilter'
@@ -76,63 +76,97 @@ end
 def unlink_prob_sdbm(options = {})
     FileUtils.rm(["C.prob.sdbm.dir",
                   "C.prob.sdbm.pag",
+                  "C.prob.sdbm.lock",
                   "ja.prob.sdbm.dir",
-                  "ja.prob.sdbm.pag"], options)
+                  "ja.prob.sdbm.pag",
+                  "ja.prob.sdbm.lock"], options)
 end
 def unlink_token_sdbm(options = {})
     FileUtils.rm(["C.clean.sdbm.dir",
                   "C.clean.sdbm.pag",
+                  "C.clean.sdbm.lock",
                   "C.spam.sdbm.dir",
                   "C.spam.sdbm.pag",
+                  "C.spam.sdbm.lock",
                   "ja.clean.sdbm.dir",
                   "ja.clean.sdbm.pag",
+                  "ja.clean.sdbm.lock",
                   "ja.spam.sdbm.dir",
-                  "ja.spam.sdbm.pag"], options)
+                  "ja.spam.sdbm.pag",
+                  "ja.spam.sdbm.lock"], options)
 end
 
 
 def unlink_prob_gdbm(options = {})
     FileUtils.rm(["C.prob.gdbm",
-                  "ja.prob.gdbm"], options)
+                  "C.prob.gdbm.lock",
+                  "ja.prob.gdbm",
+                  "ja.prob.gdbm.lock"], options)
 end
 def unlink_token_gdbm(options = {})
     FileUtils.rm(["C.clean.gdbm",
+                  "C.clean.gdbm.lock",
                   "ja.clean.gdbm",
+                  "ja.clean.gdbm.lock",
                   "C.spam.gdbm",
-                  "ja.spam.gdbm"], options)
+                  "C.spam.gdbm.lock",
+                  "ja.spam.gdbm",
+                  "ja.spam.gdbm.lock"], options)
 end
+
+def unlink_prob_bdb1(options = {})
+    FileUtils.rm(["C.prob.bdb1",
+                  "C.prob.bdb1.lock",
+                  "ja.prob.bdb1",
+                  "ja.prob.bdb1.lock"], options)
+end
+
 
 def unlink_token_bdb1(options = {})
     FileUtils.rm(["C.clean.bdb1",
+                  "C.clean.bdb1.lock",
                   "ja.clean.bdb1",
+                  "ja.clean.bdb1.lock",
                   "C.spam.bdb1",
-                  "ja.spam.bdb1"], options)
+                  "C.spam.bdb1.lock",
+                  "ja.spam.bdb1",
+                  "ja.spam.bdb1.lock"], options)
 end
-def unlink_prob_bdb1(options = {})
-    FileUtils.rm(["C.prob.bdb1",
-                  "ja.prob.bdb1"], options)
+
+def unlink_prob_bdb(options = {})
+    FileUtils.rm(["C.prob.bdb",
+                  "C.prob.bdb.lock",
+                  "ja.prob.bdb",
+                  "ja.prob.bdb.lock"], options)
 end
 
 def unlink_token_bdb(options = {})
     FileUtils.rm(["C.clean.bdb",
+                  "C.clean.bdb.lock",
                   "ja.clean.bdb",
+                  "ja.clean.bdb.lock",
                   "C.spam.bdb",
-                  "ja.spam.bdb"], options)
+                  "C.spam.bdb.lock",
+                  "ja.spam.bdb",
+                  "ja.spam.bdb.lock"], options)
 end
-def unlink_prob_bdb(options = {})
-    FileUtils.rm(["C.prob.bdb",
-                  "ja.prob.bdb"], options)
+
+def unlink_prob_qdbm(options = {})
+    FileUtils.rm(["C.prob.qdbm",
+                  "C.prob.qdbm.lock",
+                  "ja.prob.qdbm",
+                  "ja.prob.qdbm.lock"], options)
 end
 
 def unlink_token_qdbm(options = {})
     FileUtils.rm(["C.clean.qdbm",
+                  "C.clean.qdbm.lock",
                   "ja.clean.qdbm",
+                  "ja.clean.qdbm.lock",
                   "C.spam.qdbm",
-                  "ja.spam.qdbm"], options)
-end
-def unlink_prob_qdbm(options = {})
-    FileUtils.rm(["C.prob.qdbm",
-                  "ja.prob.qdbm"], options)
+                  "C.spam.qdbm.lock",
+                  "ja.spam.qdbm",
+                  "ja.spam.qdbm.lock"], options)
 end
 
 class TestMultipleInstances < Test::Unit::TestCase

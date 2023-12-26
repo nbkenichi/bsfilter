@@ -1,6 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.79 2006/05/03 12:38:50 nabeken Exp $
-
+## -*-Ruby-*- $Id: bsfilter,v 1.82 2006/09/24 09:41:34 nabeken Exp $
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
@@ -30,10 +29,11 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_14 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_15 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.79 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.82 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
+  Default_Language = "C"
 
 ##  Options = Hash::new           # used like a global variable
 ##  DB = Hash::new
@@ -628,7 +628,7 @@ EOM
     def each_ct
       @dbm.each_key do |ct|
         (category, token) = ct.split(Regexp.new(MAGIC), 2)
-        yield(category, token)
+        yield(category, token) if (category && token)
       end
     end
     
@@ -742,10 +742,6 @@ EOM
       
       @lockfh.flock(File::LOCK_UN)
       @lockfh.close
-      begin
-        File::unlink(@lockfile)
-      rescue
-      end
       @dirty = false
     end
   end
@@ -894,7 +890,8 @@ EOM
   def get_lang_from_headers(headers)
     reg_char_ja = Regexp::compile('\?(iso-2022-jp|iso-2202-jp|x.sjis|shift.jis|euc.jp)\?', Regexp::IGNORECASE, 'n')
     reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
-    [headers["from"], headers["subject"]].each do |str|
+    @options["refer-header"].keys.each do |header_name|
+      str = headers[header_name]
       if (str)
         case str
         when reg_char_ja
@@ -960,7 +957,7 @@ EOM
     headers = DBHash::new
     buf = buf.dup
     header_buf = Array::new
-    if ((buf[0] !~ /\Afrom\s+(\S+)/i) && # this isn't mail
+    if ((buf[0] !~ /\A>?from\s+(\S+)/i) && # this isn't mail
         (buf[0] !~ /\A(\S+):/))
       if (@options["max-line"] <= 0)
         return [headers, buf, lang]
@@ -979,7 +976,7 @@ EOM
         else
           headers[current] = (headers[current] || "") + " " + $2.sub(/[\r\n]*\z/, '')
         end
-      elsif (str =~ /\Afrom\s+(\S+)/i)
+      elsif (str =~ /\A>?from\s+(\S+)/i)
         headers["ufrom"] = $1
       elsif (str =~ /\A\r*\z/)
         break
@@ -1213,7 +1210,8 @@ EOM
     if (headers.empty?)           # this is not a mail
       (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
       db.time = Time::new
-      db.language = "C" if (! db.language)
+      db.language = Default_Language if (! db.language)
+##      db.language = Default_Language if (@options["unified-db"])
       return db
     end
     
@@ -1265,7 +1263,8 @@ EOM
     body_db.add_db(sub_head_db)
     body_db.file_count = 1
     body_db.time = Time::new
-    body_db.language = "C" if (! body_db.language)
+    body_db.language = Default_Language if (! body_db.language)
+##    body_db.language = Default_Language if (@options["unified-db"])
     return body_db
   end
   
@@ -1439,13 +1438,13 @@ EOM
         if (@options["utf-8"])
           str = Iconv.u2eucjp(str)
         else
-          lang = "C"              # can't use iconv / stop ja tokenizer
+          lang = Default_Language              # can't use iconv / stop ja tokenizer
         end
       elsif (code == "gb18030")
         if (@options["utf-8"])
           str = Iconv.gb180302eucjp(str)
         else
-          lang = "C"
+          lang = Default_Language
         end
       else
         str = NKF::nkf('-e -X -Z0', str)
@@ -2233,7 +2232,7 @@ EOM
   
   def read_exported_text(fh)
     dbs = DBHash::new
-    Languages.each do |lang|
+    @options["languages"].each do |lang|
       dbs[lang] = TokenDB::new(lang)
       dbs[lang].time = Time::new
     end
@@ -2258,7 +2257,7 @@ EOM
   
   def update_token_dbs(files)
     dbs = Array::new
-    Languages.each do |lang|
+    @options["languages"].each do |lang|
       @db_hash[lang].clean.open("rw")
       @db_hash[lang].spam.open("rw")
     end
@@ -2325,7 +2324,7 @@ EOM
     end
     
     slimed = false
-    Languages.each do |lang|
+    @options["languages"].each do |lang|
       slimed |= @db_hash[lang].clean.check_size(@options["max-mail"], @options["min-mail"])
       slimed |= @db_hash[lang].spam.check_size(@options["max-mail"], @options["min-mail"])
       @db_hash[lang].clean.close
@@ -2508,8 +2507,8 @@ EOM
     buf.push(response)
     @options["message-fh"].printf("resp %s %s", socket, response.sub(/\APASS.*/i, "PASS ********")) if (@options["debug"])
     if ((response =~ /\A\+OK/) &&
-        ((command =~ /(RETR|TOP|CAPA)/i) ||
-         (command =~ /(UIDL|LIST)[^\d]*\z/i)))
+        ((command =~ /\A(RETR|TOP|CAPA)/i) ||
+         (command =~ /\A(UIDL|LIST)[^\d]*\z/i)))
       while (response != ".\r\n")
         response = socket.gets_timeout
         buf.push(response)
@@ -2625,6 +2624,7 @@ EOM
             end
             # don't use elsif
             if (command =~ /QUIT/i)
+              @options["message-fh"].printf("send %s %s", pop_proxy_socket, response[0]) if (@options["debug"])
               pop_proxy_socket.write(response) # return response to MUA
               break
             elsif ((command =~ /\AUSER\s*(\S*)\r/) &&
@@ -2633,6 +2633,7 @@ EOM
               pop_proxy_socket.write("-ERR unregistered user\r\n") # return response to MUA              
               break
             else
+              @options["message-fh"].printf("send %s %s", pop_proxy_socket, response[0]) if (@options["debug"])
               pop_proxy_socket.write(response) # return response to MUA              
             end
           end
@@ -2753,7 +2754,7 @@ EOM
     end
     if (@options["export-clean"])
       open_wo(file) do |fh|
-        Languages.each do |lang|
+        @options["languages"].each do |lang|
           @db_hash[lang].clean.open("r")
           @db_hash[lang].clean.export(fh) if (@db_hash[lang].clean.file_count > 0)
           @db_hash[lang].clean.close
@@ -2762,7 +2763,7 @@ EOM
     end
     if (@options["export-spam"])
       open_wo(file) do |fh|
-        Languages.each do |lang|
+        @options["languages"].each do |lang|
           @db_hash[lang].spam.open("r")
           @db_hash[lang].spam.export(fh) if (@db_hash[lang].spam.file_count > 0)
           @db_hash[lang].spam.close
@@ -2771,7 +2772,7 @@ EOM
     end
     if (@options["export-probability"])
       open_wo(file) do |fh|
-        Languages.each do |lang|
+        @options["languages"].each do |lang|
           @db_hash[lang].prob.open("r")
           @db_hash[lang].prob.export(fh) if (@db_hash[lang].prob.file_count > 0)
           @db_hash[lang].prob.close
@@ -2818,7 +2819,12 @@ EOM
       end
       def gets_timeout
         timeout(SOCKET_TIMEOUT) do
-          return self.gets
+          s = self.gets
+          if (s == nil)
+            raise "socket.gets returned nil"
+          else
+            return s
+          end
         end
       end
 EOM
@@ -2833,7 +2839,12 @@ EOM
       end
       def gets_timeout
         timeout(SOCKET_TIMEOUT) do
-          return self.gets
+          s = self.gets
+          if (s == nil)
+            raise "ssl_socket.gets returned nil"
+          else
+            return s
+          end
         end
       end
 EOM
@@ -2960,6 +2971,7 @@ EOM
                        ["--config-file", GetoptLong::REQUIRED_ARGUMENT],
                        ["--pid-file", GetoptLong::REQUIRED_ARGUMENT],
                        ["--db", GetoptLong::REQUIRED_ARGUMENT],
+##                     ["--unified-db", GetoptLong::NO_ARGUMENT],
                        ["--max-line", GetoptLong::REQUIRED_ARGUMENT],
                        ["--export-clean", GetoptLong::NO_ARGUMENT],
                        ["--export-spam", GetoptLong::NO_ARGUMENT],
@@ -3111,7 +3123,15 @@ EOM
       soft_raise(sprintf("#{$0}: unsupported argument `%s' for --jtokenizer or -j\n", options["jtokenizer"]))
     end
     @jtokenizer = Jtokenizer::new(options["jtokenizer"])
-    
+
+##    if (options["unified-db"])
+##      options["languages"] = [Default_Language]
+##    else
+##      options["languages"] = Languages
+##    end
+
+    options["languages"] = Languages
+
     options['mark-in-token'] = Default_mark_in_token if (! options['mark-in-token'])
     options['mark-in-token'].gsub!(/\s/, '')
     options["max-line"] = (options["max-line"] || Default_max_line).to_i
@@ -3171,7 +3191,7 @@ EOM
   end
     
   def show_db_status
-    Languages.each do |lang|
+    @options["languages"].each do |lang|
       @db_hash[lang].clean.open("r")
       @db_hash[lang].spam.open("r")
       @db_hash[lang].prob.open("r")
@@ -3260,7 +3280,7 @@ EOM
     
     init_dir(@options["homedir"])
     
-    Languages.each do |lang|
+    @options["languages"].each do |lang|
       case @options["method"]
       when 'rf'
         @db_hash[lang] = RobinsonFisher::new(@options, lang)
@@ -3322,7 +3342,7 @@ EOM
     
     if (@options["update"])
       filtering_mode = false
-      Languages.each do |lang|
+      @options["languages"].each do |lang|
         @db_hash[lang].clean.open("r")
         @db_hash[lang].spam.open("r")
         @db_hash[lang].update_probability(token_dbs) # dbs = Array of TokenDB for -c, -s
@@ -3333,7 +3353,7 @@ EOM
     
     ret_code = CODE_NORMAL
     if (filtering_mode)
-      Languages.each do |lang|
+      @options["languages"].each do |lang|
         @db_hash[lang].prob.open("r")
       end
       if (@options["imap"])
@@ -3368,7 +3388,7 @@ EOM
           end
         end
       end
-      Languages.each do |lang|
+      @options["languages"].each do |lang|
         @db_hash[lang].prob.close
       end
       STDOUT::flush

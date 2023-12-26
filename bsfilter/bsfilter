@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.76 2005/12/20 14:02:11 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.77 2006/01/27 14:14:05 nabeken Exp $
 
-## Copyright (C) 2003, 2004, 2005 NABEYA Kenichi
+## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -30,9 +30,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_11 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_12 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.76 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.77 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
 
 ##  Options = Hash::new           # used like a global variable
@@ -134,9 +134,8 @@ class Bsfilter
     def append_header!(buf, header, prefix)
       buf[0] =~ /([\r\n]*)\z/
       eol = $1
-      
       (0 ... buf.length).each do |i|
-        if (buf[i] =~/\A(.*?:)(\s*)(.*)/)
+        if (buf[i] =~/\A(.*?:)(\s*)(.*?)([\r\n]*)\z/)
           h = $1
           org_content = $3
           if (h.downcase == header.downcase)

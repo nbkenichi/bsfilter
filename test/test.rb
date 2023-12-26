@@ -1,4 +1,4 @@
-## -*-Ruby-*- $Id: test.rb,v 1.2 2005/11/12 01:14:52 nabeken Exp $
+## -*-Ruby-*- $Id: test.rb,v 1.3 2006/01/27 14:14:54 nabeken Exp $
 ## this file is written in eucJP
 
 load '../bsfilter/bsfilter'
@@ -134,7 +134,6 @@ def unlink_prob_qdbm(options = {})
     FileUtils.rm(["C.prob.qdbm",
                   "ja.prob.qdbm"], options)
 end
-
 
 class TestMultipleInstances < Test::Unit::TestCase
   def test_by_mbox
@@ -338,7 +337,6 @@ class TestPlainTextParser < Test::Unit::TestCase
   end
 end
 
-
 class TestDBM < Test::Unit::TestCase
   def setup
     unlink_all
@@ -506,8 +504,14 @@ end
 
 class TestEOL < Test::Unit::TestCase
   def setup
-    @bsfilter = Bsfilter::new
-    @bsfilter.setup($default_options + ["--pipe", "--insert-revision"])
+    unlink_all
+    @files = ["testcases/lf", "testcases/crlf", "testcases/cr"]
+    @bsfilter = Bsfilter::new    
+    @bsfilter.setup($default_options + ["-s", "-u"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--pipe", "--mark-spam-subject", "--insert-revision"])
     @bsfilter.use_dummyfh
   end
 
@@ -515,27 +519,31 @@ class TestEOL < Test::Unit::TestCase
     @files = ["testcases/lf"]
     @bsfilter.run(@files)
 
-    assert_equal(11, @bsfilter.count_pipe(/\n/), '\n')
-    assert_equal(0, @bsfilter.count_pipe(/\r/), '\r')
-    assert_equal(0, @bsfilter.count_pipe(/\r\n/), '\r\n')
+    assert_equal(11, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
   end
 
   def test_cr
     @files = ["testcases/cr"]
     @bsfilter.run(@files)
 
-    assert_equal(0, @bsfilter.count_pipe(/\n/), '\n')
-    assert_equal(11, @bsfilter.count_pipe(/\r/), '\r')
-    assert_equal(0, @bsfilter.count_pipe(/\r\n/), '\r\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(11, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
   end
 
   def test_crlf
     @files = ["testcases/crlf"]
     @bsfilter.run(@files)
 
-    assert_equal(11, @bsfilter.count_pipe(/\n/), '\n')
-    assert_equal(11, @bsfilter.count_pipe(/\r/), '\r')
-    assert_equal(11, @bsfilter.count_pipe(/\r\n/), '\r\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(11, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
+  end
+
+  def teardown
+    unlink_all
   end
 end
 
@@ -599,7 +607,7 @@ class TestTokenizerOptionCombination < Test::Unit::TestCase
   def test_all
     i = 0
     imax = 2 ** @option_elements.length
-
+p
     while (i < imax)
       j = 0
       option_array = Array::new

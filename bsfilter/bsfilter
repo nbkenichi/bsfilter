@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.82 2006/09/24 09:41:34 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.85 2008/03/02 13:02:11 nabeken Exp $
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
@@ -29,9 +29,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_15 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_16 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.82 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.85 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Default_Language = "C"
 
@@ -120,35 +120,49 @@ class Bsfilter
       eol = $1
       
       (0 ... buf.length).each do |i|
-        if (buf[i] =~/\A(.*?:)/)
+        if ((i == 0) &&         # unix from line
+            (buf[i] =~ /\A>?from\s+(\S+)/))
+          next
+        elsif (buf[i] =~/\A(.*?:)/)
           h = $1
           if (h == header)
             buf[i] = "#{header} #{content}#{eol}"
-            break
+            return
           end
-        elsif (buf[i] =~ /\A[\r\n]*\z/)
+        elsif (buf[i] =~ /\A\s+\S/) # folded header
+          next
+        elsif (buf[i] =~ /\A[\r\n]*\z/) # separator between header and body
           buf[i, 0] = "#{header} #{content}#{eol}"
-          break
+          return
+        else                    # not header. may be body without separator
+          buf[i, 0] = "#{header} #{content}#{eol}"
+          return
         end
       end
+      buf.push("#{header} #{content}#{eol}")
     end
 
     def append_header!(buf, header, prefix)
       buf[0] =~ /([\r\n]*)\z/
       eol = $1
+      append_done = false
       (0 ... buf.length).each do |i|
         if (buf[i] =~/\A(.*?:)(\s*)(.*?)([\r\n]*)\z/)
           h = $1
           org_content = $3
           if (h.downcase == header.downcase)
             buf[i] = "#{header} #{prefix}#{org_content}#{eol}"
-            break
+            append_done = true
           end
-        elsif (buf[i] =~ /\A[\r\n]*\z/)
+        elsif ((! append_done) &&
+               (((buf[i] =~ /\A\S/) && (buf[i] !~ /\A\S+:/)) || # found body without separator
+                (buf[i] =~ /\A[\r\n]*\z/))) # separator between header and body
           buf[i, 0] = "#{header} #{prefix}#{eol}"
+          append_done = true
           break
         end
       end
+      buf.push("#{header} #{prefix}#{eol}") if (! append_done)
     end
 
     def x_spam_flag
@@ -978,7 +992,10 @@ EOM
         end
       elsif (str =~ /\A>?from\s+(\S+)/i)
         headers["ufrom"] = $1
-      elsif (str =~ /\A\r*\z/)
+      elsif (str =~ /\A[\r\n]*\z/) # separator between header and body
+        break
+      elsif (str =~ /\A\S/)     # found body without separator
+        buf.push(str)           # rewind
         break
       elsif (! current)
         break
@@ -1400,6 +1417,7 @@ EOM
           separators.pop
           delimiter = delimiters.last
           separator = separators.last
+          break
         else
           buf.push(str)
         end
@@ -2164,43 +2182,35 @@ EOM
 
   class Mbox
     def initialize(options, fh)
-      @buf = Array::new
       @options = options
-      @fh = fh
+      @buf = fh.readlines
+      if ((@buf.length == 1) && (@buf.last =~ /\r\z/)) # Mac style EOL
+        @buf = @buf.last.scan(/.*?\r/)
+      end
     end
     def read
-      if (! @options["mbox"])
-        if (@fh.eof?)
-          return nil
-        else
-          buf = @fh.readlines
-          if ((buf.length == 1) && (buf.last =~ /\r\z/))
-            return buf.last.scan(/.*?\r/)
+      return nil if (@buf.empty?) # EOF
+      if (! @options["mbox"])   # one file == one mail
+        ret_buf = @buf.dup
+        @buf.clear
+        return ret_buf
+      else
+        ##    reg_ufrom = Regexp::compile('^From .*@.* \d{2}:\d{2}:\d{2} ')
+        ret_buf = Array::new
+        while (str = @buf.shift)
+          if (str =~ /^From /)
+            if (ret_buf.empty?) # head of mail
+              ret_buf.push(str)
+            else                # head of next mail
+              @buf.unshift(str) # rewind
+              return ret_buf
+            end
           else
-            return buf
+            ret_buf.push(str)
           end
         end
+        return ret_buf          # last mail of the file
       end
-      
-      ##    reg_ufrom = Regexp::compile('^From .*@.* \d{2}:\d{2}:\d{2} ')
-      reg_ufrom = Regexp::compile('^From ')
-      while (str = @fh.gets)
-        if (str =~ reg_ufrom)
-          if (@buf.empty?)
-            @buf.push(str)
-          else
-            ret_buf = @buf
-            @buf = Array::new
-            @buf.push(str)
-            return ret_buf
-          end
-        else
-          @buf.push(str)
-        end
-      end
-      ret_buf = @buf
-      @buf = nil
-      return ret_buf
     end
   end
   
@@ -3272,9 +3282,8 @@ EOM
       @options["message-fh"] = STDOUT
       @options["pipe-fh"] = STDOUT
       # keep STDOUT in text mode
+      @options["message-fh"].sync = true
     end
-
-##    @options["message-fh"].sync = true
     
     @options['mark-in-token'] = Regexp::quote(@options['mark-in-token'])
     

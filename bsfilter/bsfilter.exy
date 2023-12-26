@@ -1,0 +1,44 @@
+## $Id: bsfilter.exy,v 1.1 2006/12/10 05:08:43 nabeken Exp $
+## recipe for Exerb 4.0.0
+## need to specify --corefile and --outfile
+
+general:
+  startup: bsfilter
+  kcode: none
+
+path:
+ - /usr/local/lib/ruby/site_ruby/1.8/exerb/1.8
+ - /usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32
+
+file:
+ bsfilter:
+ getoptlong.rb:
+ timeout.rb:
+ monitor.rb:
+ net/imap.rb:
+ openssl.rb:
+ openssl/bn.rb:
+ openssl/buffering.rb:
+ openssl/cipher.rb:
+ openssl/digest.rb:
+ openssl/ssl.rb:
+ openssl/x509.rb:
+ nkf.so:
+ iconv.so:
+ socket.so:
+ openssl.so:
+ sdbm.so:
+ gdbm.so:
+ digest.so:
+ digest/md5.so:
+ Win32API.so:
+ swin.so:
+ vr/compat/rubycompat.rb:
+ vr/compat/vrcontrol.rb:
+ vr/contrib/vrwincomponent.rb:
+ vr/rscutil.rb:
+ vr/sysmod.rb:
+ vr/vrcontrol.rb:
+ vr/vrtray.rb:
+ vr/vruby.rb:
+ vr/winconst.rb:

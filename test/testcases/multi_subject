@@ -1,0 +1,16 @@
+Date: Sat, 23 Jul 2005 00:24:41 +0900 (JST)
+Message-Id: <20050723.002441.78702756@example.com>
+To: user@example.com
+Subject: subject1
+Subject: subject2
+From: user@example.com
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+quote head
+tail
+> quote head
+> tail
+| quote head
+| tail

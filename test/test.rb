@@ -1,4 +1,4 @@
-## -*-Ruby-*- $Id: test.rb,v 1.6 2006/09/17 10:51:26 nabeken Exp $
+## -*-Ruby-*- $Id: test.rb,v 1.9 2007/02/12 06:01:44 nabeken Exp $
 ## this file is written in eucJP
 
 load '../bsfilter/bsfilter'
@@ -352,6 +352,12 @@ class TestBase64 < Test::Unit::TestCase
     @bsfilter.use_dummyfh
   end
 
+  def test_delimiter_bug
+    @files = ["testcases/mime_delimiter_bug"]
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "japanese")
+  end
+
   def test_base64
     @files = ["testcases/sjis_base64_iso_2022_jp"]
     @bsfilter.run(@files)
@@ -648,6 +654,78 @@ class TestHeaderParser < Test::Unit::TestCase
   end
 end
 
+class TestInsertHeader < Test::Unit::TestCase
+  def setup
+    @bsfilter = Bsfilter::new    
+    @bsfilter.setup($default_options + ["--pipe", "--insert-revision"])
+    @bsfilter.use_dummyfh
+  end
+  
+  def test_normal
+    @files = ["testcases/ascii_plain"]
+    @bsfilter.run(@files)
+    assert_equal(16, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_match(/^X-Spam-Revision:/, @bsfilter.options["pipe-fh"].buf[8])
+  end
+
+  def test_no_body
+    @files = ["testcases/no_body"]
+    @bsfilter.run(@files)
+    assert_equal(9, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_match(/^X-Spam-Revision:/, @bsfilter.options["pipe-fh"].buf[8])
+  end
+
+  def test_no_boundary
+    @files = ["testcases/no_boundary"]
+    @bsfilter.run(@files)
+    assert_equal(15, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_match(/^X-Spam-Revision:/, @bsfilter.options["pipe-fh"].buf[8])
+  end
+
+  def teardown
+    unlink_prob_sdbm
+  end
+end
+
+class TestMarkSpamSubject < Test::Unit::TestCase
+  def setup
+    unlink_all
+    @files = ["testcases/multi_subject", "testcases/no_body", "testcases/no_boundary"]
+    @bsfilter = Bsfilter::new    
+    @bsfilter.setup($default_options + ["-s", "-u"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--pipe", "--mark-spam-subject", "--insert-revision"])
+    @bsfilter.use_dummyfh
+  end
+
+  def test_multi_subject
+    @files = ["testcases/multi_subject"]
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_pipe(/\ASubject: \[SPAM\] subject1/), "1st subject")
+    assert_equal(1, @bsfilter.count_pipe(/\ASubject: \[SPAM\] subject2/), "2nd subject")
+  end
+
+  def test_no_body
+    @files = ["testcases/no_body"]
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_pipe(/\ASubject: \[SPAM\]/), "no body, no subject")
+  end
+
+  def test_no_boundary
+    @files = ["testcases/no_boundary"]
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_pipe(/\ASubject: \[SPAM\]/), "no boundary, no subject")
+  end
+
+  def teardown
+    unlink_token_sdbm
+    unlink_prob_sdbm
+  end
+end
+
+
 class TestEOL < Test::Unit::TestCase
   def setup
     unlink_all
@@ -689,7 +767,47 @@ class TestEOL < Test::Unit::TestCase
   end
 
   def teardown
-    unlink_all
+    unlink_token_sdbm
+    unlink_prob_sdbm
+  end
+end
+
+class TestEOLMBox < Test::Unit::TestCase
+  def setup
+    @bsfilter = Bsfilter::new    
+    @bsfilter.setup($default_options + ["--mbox", "--pipe", "--insert-revision"])
+    @bsfilter.use_dummyfh
+  end
+
+  def test_lf
+    @files = ["testcases/mbox_lf"]
+    @bsfilter.run(@files)
+
+    assert_equal(23, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
+  end
+
+  def test_cr
+    @files = ["testcases/mbox_cr"]
+    @bsfilter.run(@files)
+
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(23, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
+  end
+
+  def test_crlf
+    @files = ["testcases/mbox_crlf"]
+    @bsfilter.run(@files)
+
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\n\z/), '\n')
+    assert_equal(0, @bsfilter.count_pipe(/\A[^\r\n]*\r\z/), '\r')
+    assert_equal(23, @bsfilter.count_pipe(/\A[^\r\n]*\r\n\z/), '\r\n')
+  end
+
+  def teardown
+    unlink_prob_sdbm
   end
 end
 

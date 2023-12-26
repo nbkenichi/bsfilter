@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.86 2010/11/20 10:07:45 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.87 2013/11/03 10:22:15 nabeken Exp $
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
@@ -29,9 +29,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_18 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_19 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.86 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.87 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Default_Language = "C"
 
@@ -88,7 +88,7 @@ class Bsfilter
   CODESET_GB18030 = "GB18030"
   CODESET_UTF8 = "UTF-8"
   PATTERN_UTF8 = '[\xe0-\xef][\x80-\xbf][\x80-\xbf][\xe0-\xef][\x80-\xbf][\x80-\xbf]'
-  RE_UTF8 = Regexp.new(PATTERN_UTF8, 'n')
+  RE_UTF8 = Regexp.new(PATTERN_UTF8, nil, 'n')
   
   ALL_TAGS = ["html", "head", "title", "meta", "body", "div", "spam",
               "h1", "h2", "h3", "h4", "h5", "h6",
@@ -280,37 +280,21 @@ class Bsfilter
   end
 
   def latin2ascii(str)
-    newstr = str.tr("\x92\x93\x94", "'''")
-    newstr.tr!("\xc0-\xc5\xc8-\xcb\xcc-\xcf\xd2-\xd6\xd9-\xdc", "AAAAAAEEEEIIIIOOOOOUUUU")
-    newstr.tr!("\xe0-\xe5\xe8-\xeb\xec-\xef\xf2-\xf6\xf9-\xfc", "aaaaaaeeeeiiiiooooouuuu")
+    str.force_encoding('ASCII-8BIT')
+    newstr = str.tr("\x92\x93\x94".force_encoding('ASCII-8BIT'), "'''")
+    newstr.tr!("\xc0-\xc5\xc8-\xcb\xcc-\xcf\xd2-\xd6\xd9-\xdc".force_encoding('ASCII-8BIT'), "AAAAAAEEEEIIIIOOOOOUUUU")
+    newstr.tr!("\xe0-\xe5\xe8-\xeb\xec-\xef\xf2-\xf6\xf9-\xfc".force_encoding('ASCII-8BIT'), "aaaaaaeeeeiiiiooooouuuu")
     return newstr
   end
 
-  def define_safe_iconv
-    def Iconv.safe_iconv(tocode, fromcode, *strs)
-      return strs.map do |str|
-        array = Array::new
-        strs.each do |str|
-          str.split(/(\s+)/).each do |word|
-            begin
-              array.push(Iconv.iconv(tocode, fromcode, word)[0])
-            rescue
-              array.push(' ')
-            end
-          end
-        end
-        array.join
-      end
-    end
-    def Iconv.u2eucjp(str)
-      return NKF::nkf('-e -E -X -Z0', (Iconv.safe_iconv(CODESET_EUCJP, CODESET_UTF8, str))[0])
-    end
-    def Iconv.u2latin(str)
-      return (Iconv.safe_iconv(CODESET_LATIN, CODESET_UTF8, str))[0]
-    end
-    def Iconv.gb180302eucjp(str)
-      return (Iconv.safe_iconv(CODESET_EUCJP, CODESET_GB18030, str))[0]
-    end
+  def u2eucjp(str)
+      return NKF::nkf('-e -E -X -Z0', str.encode('EUC-JP', 'UTF-8', :undef => :replace, :invalid => :replace))
+  end
+  def u2latin(str)
+    return str.encode('US-ASCII', 'UTF-8', :undef => :replace, :invalid => :replace)
+  end
+  def gb180302eucjp(str)
+    return str.encode('EUC-JP', 'BIG5', :undef => :replace, :invalid => :replace)
   end
   
   def open_ro(file)
@@ -477,7 +461,7 @@ EOM
     end
     
     def show_new_token(db)
-      db.each_ct do |(category, token)|
+      db.each_ct do |category, token|
         if (! value(category, token) || (value(category, token) == 0))
           @options["message-fh"].printf("new %s %s\n", category, token)
         end
@@ -501,7 +485,7 @@ EOM
     end
     
     def export(fh)
-      each_ct do |(category, token)|
+      each_ct do |category, token|
         fh.printf("%s %s %s %g\n", @language, category, token, value(category, token)) if (value(category, token))
       end
     end
@@ -641,7 +625,7 @@ EOM
     
     def each_ct
       @dbm.each_key do |ct|
-        (category, token) = ct.split(Regexp.new(MAGIC), 2)
+        (category, token) = ct.force_encoding('ASCII-8BIT').split(Regexp.new(MAGIC), 2)
         yield(category, token) if (category && token)
       end
     end
@@ -917,7 +901,7 @@ EOM
         end
       end
     end
-    return nil
+    return [nil, nil]
   end
 
   def get_lang_from_buf(buf, html_flag)
@@ -925,11 +909,18 @@ EOM
   end
 
   def get_lang(buf, html_flag=false)
-    reg_euc = Regexp::compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}", nil, 'e') # kana in euc-jp without zenkaku-space
-    reg_sjis = Regexp::compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}", nil, 's') # kana in shift-jis
-    reg_utf8 = Regexp::compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}", nil, 'u') # kana in utf8
-    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
-    reg_gb18030_possible = Regexp::compile('[\x80-\x9f]', nil, 'n')
+##    reg_euc = Regexp::compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}", nil, 'e') # kana in euc-jp without zenkaku-space
+    reg_euc = Regexp::compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}".force_encoding('EUC-JP'))
+##    reg_sjis = Regexp::compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}", nil, 's') # kana in shift-jis
+    reg_sjis = Regexp::compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}".force_encoding('SHIFT_JIS'))
+                   
+##    reg_utf8 = Regexp::compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}", nil, 'u') # kana in utf8
+    reg_utf8 = Regexp::compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}".force_encoding('UTF-8'))
+
+##    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
+    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]".force_encoding('ASCII-8BIT'))
+##    reg_gb18030_possible = Regexp::compile('[\x80-\x9f]', nil, 'n')
+    reg_gb18030_possible = Regexp::compile('[\x80-\x9f]'.force_encoding('ASCII-8BIT'))
     
 ##    reg_char_utf8 = Regexp::compile('(^\w+: .*|charset="?)(utf-8)', Regexp::IGNORECASE, 'n')
 ##    reg_cte_bin = Regexp::compile('\Acontent-transfer-encoding\s*:\s*(base64|quoted-printable)', Regexp::IGNORECASE, 'n')
@@ -940,21 +931,24 @@ EOM
       if (html_flag)
         str = decode_character_reference2u(str)
       end
-      if (str =~ reg_gb18030_possible)
+      if (str.force_encoding('ASCII-8BIT') =~ reg_gb18030_possible)
         gb18030_possible = true
       end
 
-      case str.gsub(/\s/, '')
-      when reg_utf8
+      str_utf8 = str.encode('UTF-16BE', 'UTF-8', :undef => :replace, :invalid => :replace).encode('UTF-8', 'UTF-16BE', :undef => :replace, :invalid => :replace)
+      str_sjis = str.encode('UTF-16BE', 'SHIFT_JIS', :undef => :replace, :invalid => :replace).encode('SHIFT_JIS', 'UTF-16BE', :undef => :replace, :invalid => :replace)
+      str_euc = str.encode('UTF-16BE', 'EUC-JP', :undef => :replace, :invalid => :replace).encode('EUC-JP', 'UTF-16BE', :undef => :replace, :invalid => :replace)
+
+      if (str_utf8 =~ reg_utf8)
         @options["message-fh"].printf("lang ja utf8\n") if (@options["debug"])
         return ["ja", "utf8"]
-      when reg_jis
+      elsif (str.force_encoding('ASCII-8BIT') =~ reg_jis)
         @options["message-fh"].printf("lang ja jis\n") if (@options["debug"])
         return ["ja", "jis"]
-      when reg_sjis
+      elsif (str_sjis =~ reg_sjis)
         @options["message-fh"].printf("lang ja sjis\n") if (@options["debug"])
         return ["ja", "sjis"]
-      when reg_euc
+      elsif (str_euc =~ reg_euc)
         if (gb18030_possible)
           @options["message-fh"].printf("lang ja gb18030\n") if (@options["debug"])
           return ["ja", "gb18030"]
@@ -1052,10 +1046,27 @@ EOM
         @method = Proc::new {|s| block(s)}
       when "mecab"
         @method = Proc::new {|s| mecab(s)}
+        meishi_euc = "\xcc\xbe\xbb\xec".force_encoding('ASCII-8BIT')
+        meishi_sjis = meishi_euc.encode('SHIFT_JIS', 'EUC-JP').force_encoding('ASCII-8BIT')
+        meishi_utf8 = meishi_euc.encode('UTF-8', 'EUC-JP').force_encoding('ASCII-8BIT')
         if (defined?(MeCab::VERSION)) # defined after 0.90
           @m = MeCab::Tagger.new("-Ochasen")
+          node = @m.parseToNode('this is a pen')
+          hinshi = node.next.feature.force_encoding('ASCII-8BIT').split(/,/)[0]
         else
-          @m = MeCab::Tagger.new([$0, "-Ochasen"])
+          @m = MeCab::Tagger.new("-Ochasen")
+          node = @m.parseToNode('this is a pen')
+          hinshi = node.next.getFeature.force_encoding('ASCII-8BIT').split(/,/)[0]
+        end
+        case hinshi
+        when meishi_euc
+          @m_dic_enc = Encoding::EUC_JP
+        when meishi_sjis
+          @m_dic_enc = Encoding::SHIFT_JIS
+        when meishi_utf8
+          @m_dic_enc = Encoding::UTF_8
+        else
+          @m_dic_enc = Encoding::default_external
         end
       when "chasen"
         Chasen.getopt("-F", '%H %m\n', "-j")
@@ -1071,10 +1082,18 @@ EOM
       @method.call(str)
     end
     
-    Reg_kanji = Regexp::compile("[\xb0\xa1-\xf4\xa4]+", nil, 'e')
-    Reg_katakana = Regexp::compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+", nil, 'e')
-    Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
-    Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
+##    Reg_kanji = Regexp::compile("[\xb0\xa1-\xf4\xa4]+", nil, 'e')
+    Reg_kanji = Regexp::compile("[\xb0\xa1-\xf4\xa4]+".force_encoding('EUC-JP'))
+    Reg_kanji_ASCII_8BIT = Regexp::compile("[\xb0\xa1-\xf4\xa4]+".force_encoding('ASCII-8BIT'))
+##     Reg_katakana = Regexp::compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+", nil, 'e')
+    Reg_katakana = Regexp::compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".force_encoding('EUC-JP'))
+##    Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
+    Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".force_encoding('EUC-JP'))
+#     Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4   \xa1\xbc  \xa5\xa1-\xa5\xf6]".force_encoding('ASCII-8BIT'))
+
+##    Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
+    Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".force_encoding('EUC-JP'))
+#     Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".force_encoding('ASCII-8BIT'))
     
     def kakasi(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
@@ -1092,8 +1111,9 @@ EOM
     end
     
     def mecab(str)
+      str = str.encode(@m_dic_enc, :invalid => :replace, :undef => :replace, :replace => ' ')
       str = str.gsub(/[\x00-\x7f]/, ' ')
-      if (str =~ /\A +\z/)
+      if (str.length == 0 || str =~ /\A +\z/)
         return []
       end
       array = Array::new
@@ -1101,20 +1121,29 @@ EOM
       while (node &&
              (defined?(MeCab::VERSION) || (node.hasNode == 1)))
         if defined?(MeCab::VERSION)
-          token = node.surface
-          hinshi = node.feature.split(/,/)[0]
+          token = node.surface.encode('EUC-JP', @m_dic_enc)
+          hinshi = node.feature.encode('EUC-JP', @m_dic_enc).split(/,/)[0]
         else
-          token = node.getSurface
-          hinshi = node.getFeature.split(/,/)[0]
+          token = node.getSurface.encode('EUC-JP', @m_dic_enc)
+          hinshi = node.getFeature.encode('EUC-JP', @m_dic_enc).split(/,/)[0]
         end
-        ##      print token, hinshi, "\n"
-        if (hinshi == "\xcc\xbe\xbb\xec")
-          if ((token =~ Reg_kanji_katakana) || (token.length > 2))
+        unless (token.valid_encoding?)
+  # Scrub token
+          token = token.each_char.map { |c| (c.valid_encoding?) ? c : "" }.join
+        end
+        case hinshi
+        when "BOS/EOS"
+          # Skip BOS/EOS
+        when "\xb5\xad\xb9\xe6".force_encoding('EUC-JP')
+          # Skip KIGOU
+        when "\xcc\xbe\xbb\xec".force_encoding('EUC-JP')
+          # MEISHI
+          if ((token =~ Reg_kanji_katakana) || (token.bytesize > 2))
             array.push(token)
           end
         else
           token.gsub!(Reg_not_kanji_katakana, '')
-          if ((token =~ Reg_kanji) || (token.length > 2))
+          if ((token =~ Reg_kanji) || (token.bytesize > 2))
             array.push(token)
           end
         end
@@ -1159,12 +1188,12 @@ EOM
       
       str.scan(Reg_kanji).each do |token|
         case token.length
-        when 2, 4
+        when 1, 2
           tokens.push(token)
         else
-          l = token.length / 2 - 2
+          l = token.length - 1
           for i in (0 .. l)
-            tokens.push(token[i * 2, 4])
+            tokens.push(token[i, 2])
           end
         end
       end
@@ -1209,7 +1238,7 @@ EOM
               else
                 decoded_str = encoded_str.unpack("m*").to_s 
               end
-              Iconv.u2eucjp(decoded_str)
+              u2eucjp(decoded_str)
             else
               ""
             end
@@ -1218,12 +1247,19 @@ EOM
         else
           content = latin2ascii(content)
         end
+
+        unless (content.valid_encoding?)
+      # Scrub str
+          content = content.each_char.map { |c| (c.valid_encoding?) ? c : "" }.join
+        end
+
         content.scan(reg_token).each do |token|
           head_db.add_scalar(header, token, 1) if (token.length < 20)
           @options["message-fh"].printf("tokenizer %s %s\n", header, token) if (@options["debug"])
         end
         if (lang == "ja")
           @jtokenizer.split(content.gsub(/\s+/, '')).each do |token|
+            token.force_encoding('ASCII-8BIT')
             head_db.add_scalar(header, token, 1)
             @options["message-fh"].printf("tokenizer %s %s\n", header, token) if (@options["debug"])
           end
@@ -1301,11 +1337,11 @@ EOM
   end
   
   def i2eucjp(i)
-    Iconv.u2eucjp([i].pack("U"))
+    u2eucjp([i].pack("U"))
   end
   
   def i2ascii(i)
-    latin2ascii(Iconv.u2latin([i].pack("U")))
+    latin2ascii(u2latin([i].pack("U")))
   end
   
   def i2u(i)
@@ -1313,8 +1349,9 @@ EOM
   end
 
   def decode_character_reference2u(str)
+    reg = Regexp::compile("\&\#(\d{1,5}|x[\da-f]{1,4});".force_encoding('UTF-8'), Regexp::IGNORECASE)
     if (@options["utf-8"])
-      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
+      newstr = str.gsub(reg) do
         hex_or_dec = $1
         if (hex_or_dec =~ /^x(.*)/i)
           hex_str = $1
@@ -1324,7 +1361,7 @@ EOM
         end
       end
     else
-      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i, "")
+      newstr = str.gsub(reg, "")
     end
     return newstr
   end
@@ -1363,6 +1400,11 @@ EOM
     reg_token2 = Regexp::compile('\b\d[\d\.]+\d\b|[\w%]+')
     reg_noret = Regexp::compile('[\r\n]*\z')
     
+    unless (str.valid_encoding?)
+      # Scrub str
+      str = str.each_char.map { |c| (c.valid_encoding?) ? c : "" }.join
+    end
+
     str.scan(reg_token).each do |token|
       if (token =~ reg_url)
         token.scan(reg_token2).each do |token2|
@@ -1378,12 +1420,17 @@ EOM
     end
     
     if (lang == "ja")
-      str.gsub!(Regexp::compile("^[ -\\~]*[\|\>]+", nil, 'e'), '') # delete cite mark
-      str.gsub!(Regexp::compile("^[ \\t\xa1\xa1]+", nil, 'e'), '') # delete white space
-      str.gsub!(Regexp::compile("(\\r?\\n){2,}", nil, 'e'), ' ') # keep multiple newline as space
-      str.gsub!(Regexp::compile("[\\r\\n]+", nil, 'e'), '') # delete newline
+#      str.gsub!(Regexp::compile("^[ -\\~]*[\|\>]+", nil, 'e'), '') # delete cite mark
+      str.gsub!(Regexp::compile("^[ -\\~]*[\|\>]+".force_encoding('EUC-JP')), '')
+#      str.gsub!(Regexp::compile("^[ \\t\xa1\xa1]+", nil, 'e'), '') # delete white space
+      str.gsub!(Regexp::compile("^[ \\t\xa1\xa1]+".force_encoding('EUC-JP')), '') # delete white space
+#      str.gsub!(Regexp::compile("(\\r?\\n){2,}", nil, 'e'), ' ') # keep multiple newline as space
+      str.gsub!(Regexp::compile("(\\r?\\n){2,}".force_encoding('EUC-JP')), ' ') # keep multiple newline as space
+#      str.gsub!(Regexp::compile("[\\r\\n]+", nil, 'e'), '') # delete newline
+      str.gsub!(Regexp::compile("[\\r\\n]+".force_encoding('EUC-JP')), '') # delete newline
       str.split.each do |s|
         @jtokenizer.split(s).each do |token|
+          token.force_encoding('ASCII-8BIT')
           body_hash[token] += 1
           @options["message-fh"].printf("tokenizer ja %s %s\n", "body", token) if (@options["debug"])
         end
@@ -1450,7 +1497,7 @@ EOM
         buf = buf.join.gsub(/[\r\n]/, '').unpack("m*")
       end
     when /quoted-printable/i
-      buf.map! {|str| str.unpack("M*").to_s}
+      buf.map! {|str| str.unpack("M*").join}
     end
 
     lang_backup = lang
@@ -1469,13 +1516,13 @@ EOM
     if (lang == "ja")
       if (code == "utf8")
         if (@options["utf-8"])
-          str = Iconv.u2eucjp(str)
+          str = u2eucjp(str)
         else
           lang = Default_Language              # can't use iconv / stop ja tokenizer
         end
       elsif (code == "gb18030")
         if (@options["utf-8"])
-          str = Iconv.gb180302eucjp(str)
+          str = gb180302eucjp(str)
         else
           lang = Default_Language
         end
@@ -1489,10 +1536,12 @@ EOM
     tags = Array::new
     if (headers["content-type"] =~ /html/i)
       # remove salad at head of part
+      encoding = str.encoding
+      str.force_encoding('ASCII-8BIT')
       if (str =~ Regexp::compile('\A[^<>]*?(<(\?xml|!doctype|html|body)\b.*)\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n'))
         str = $1
       end
-      
+
       # remove salad in head, except style
       if (str =~ /\A(.*?)(<body.*)\z/im)
         before_body_tag = $1
@@ -1513,8 +1562,7 @@ EOM
           str = $1
         end
       end
-      
-      
+
       # remove salad after body or html
       if (str =~ Regexp::compile('\A(.*)</html>[^<>]*?\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n')) 
         str = $1
@@ -1525,15 +1573,20 @@ EOM
       str.gsub!(Regexp::compile('<[^>]*>', Regexp::MULTILINE, 'n')) do |t|
         t = t.gsub(/\n/, '')
         if (t =~ RE_ALL_TAGS)     # end tags are thrown away
+          t.force_encoding(encoding)
           tags.push(t)
         end
         
+        t.force_encoding('ASCII-8BIT')
         if (t =~ RE_SPACE_TAGS)
+          t.force_encoding(encoding)
           " "
         else
+          t.force_encoding(encoding)
           ""
         end
       end
+      str.force_encoding(encoding)
       body_str = decode_character_reference(str, lang) # out of tags
       tag_str = decode_character_reference(tags.join, lang) # in tags
     else                          # if plain text
@@ -1621,7 +1674,7 @@ EOM
     def get_combined_probability(token_db)
       prob_db = TokenDB::new      # temporary
       
-      token_db.each_ct do |(category, token)|
+      token_db.each_ct do |category, token|
         probability = @prob.value_with_degene(category, token)
         if (probability)
           prob_db.set_scalar(category, token, probability)
@@ -1822,7 +1875,7 @@ EOM
       count = 0
       pminus = FLOAT::new(1)
       qminus = FLOAT::new(1)
-      token_db.each_ct do |(category, token)|
+      token_db.each_ct do |category, token|
         probability = @prob.value_with_degene(category, token) || robx
         if ((probability - @center).abs > @min_dev)
           if (probability <= 0.0)
@@ -2342,7 +2395,7 @@ EOM
               dbs.push(db)
               if (@options["pipe"])
                 insert_headers!(buf, (@options["add-spam"] || @options["sub-clean"]), nil) 
-                @options["pipe-fh"].print buf
+                @options["pipe-fh"].print buf.join
               end
               update_token_db_one(db)
             end
@@ -2450,11 +2503,10 @@ EOM
       end
     end
     if (@options["imap-fetch-unflagged"])
-      null = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
       yes = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), "Yes"])
       no = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), "No"])
-      @options["message-fh"].printf("imap-fetch-unflagged working original %d null %d Yes %d No %d\n",
-                                    uids.length, null.length, yes.length, no.length) if (@options["verbose"])
+      @options["message-fh"].printf("imap-fetch-unflagged working original %d Yes %d No %d\n",
+                                    uids.length, yes.length, no.length) if (@options["verbose"])
 ##      uids = uids - imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
       ## Sendmail Advanced Message Server returns all mails when search string is zero-length ???
       uids = uids - yes - no
@@ -2527,6 +2579,7 @@ EOM
   
   def socket_send_rec(command, socket)
     buf = Array::new
+    b = ".\r\n"
     if (command)
       @options["message-fh"].printf("send %s %s", socket, command.sub(/\APASS.*/i, "PASS ********")) if (@options["debug"])
       socket.write_timeout(command) # pass command to pop-server
@@ -2602,7 +2655,7 @@ EOM
   end
   
   def pop_proxy_one(pop_server, pop_port, pop_proxy_if, pop_proxy_port, pop_user)
-    gs = TCPserver.open(pop_proxy_if, pop_proxy_port)
+    gs = TCPServer.open(pop_proxy_if, pop_proxy_port)
     addr = gs.addr
     addr.shift
     @options["message-fh"].printf("pop_proxy is on %s\n", addr.join(":")) if (@options["verbose"])
@@ -2612,7 +2665,7 @@ EOM
         begin
           pop_socket = nil
           timeout(SOCKET_TIMEOUT) do
-            pop_socket = TCPsocket.open(pop_server, pop_port)
+            pop_socket = TCPSocket.open(pop_server, pop_port)
           end
           @options["message-fh"].print(pop_socket, " is connected\n") if (@options["verbose"])
 
@@ -2653,7 +2706,7 @@ EOM
             # don't use elsif
             if (command =~ /QUIT/i)
               @options["message-fh"].printf("send %s %s", pop_proxy_socket, response[0]) if (@options["debug"])
-              pop_proxy_socket.write(response) # return response to MUA
+              pop_proxy_socket.write(response.join) # return response to MUA
               break
             elsif ((command =~ /\AUSER\s*(\S*)\r/) &&
                    (pop_user && pop_user != $1))
@@ -2662,7 +2715,7 @@ EOM
               break
             else
               @options["message-fh"].printf("send %s %s", pop_proxy_socket, response[0]) if (@options["debug"])
-              pop_proxy_socket.write(response) # return response to MUA              
+              pop_proxy_socket.write(response.join) # return response to MUA              
             end
           end
         rescue TimeoutError
@@ -2851,7 +2904,9 @@ EOM
           if (s == nil)
             raise "socket.gets returned nil"
           else
-            return s
+            return s.force_encoding('ASCII-8BIT')
+##            return s.force_encoding('US-ASCII')
+##            return s.force_encoding('US-ASCII')
           end
         end
       end
@@ -3188,10 +3243,8 @@ EOM
     options["imap-auth"] = options["imap-auth"] || Default_imap_auth
     options["imap-auth-preference"] = Default_imap_auth_preference # can't modify with command line option
     
-    if ((! options["disable-utf-8"]) &&
-        safe_require("iconv"))
+    if ((! options["disable-utf-8"]))
       options["utf-8"] = true
-      define_safe_iconv if (! defined?(Iconv.safe_iconv))
     else
       options["utf-8"] = false
     end
@@ -3401,7 +3454,7 @@ EOM
               @db_hash[token_db.language].get_combined_probability(token_db)
               insert_headers!(buf, token_db.spam_flag, token_db.probability) 
               if (@options["pipe"])
-                @options["pipe-fh"].print buf
+                @options["pipe-fh"].print buf.join
               end
               printf("%s\n", file) if (token_db.spam_flag && @options["list-spam"])
               printf("%s\n", file) if (! token_db.spam_flag && @options["list-clean"])

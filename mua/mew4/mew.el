@@ -1,4 +1,4 @@
-;; $Id: mew.el,v 1.2 2004/10/23 19:08:15 nabeken Exp $
+;; $Id: mew.el,v 1.3 2006/01/14 07:38:50 nabeken Exp $
 
 ; put "D"
 (defun mew-spam-bsfilter (val)
@@ -32,6 +32,17 @@ need to re-learn if judgment of bsfilter is wrong"
    (let ((func 'mew-summary-pick-with-cmd)
 	 (mew-inherit-grep-cmd "bsfilter -a --list-spam"))
      (mew-summary-pick-body func t nil 'nopattern))))
+
+; code for Mew 4.2.53 by emon
+; (defun mew-summary-bsfilter-mark-region (&optional arg)
+;  "study/judge the region and put the '*' mark onto spams.
+; need to re-learn if judgment of bsfilter is wrong.
+; press return-key twice at the prompt."
+;  (interactive "P")
+;  (mew-pickable
+;   (let ((mew-prog-grep "bsfilter")
+;       (mew-prog-grep-opts '("-a" "--list-spam")))
+;     (mew-summary-pick t))))
 
 ; show X-Spam-Flag and X-Spam-Probability in message buffer
 (setq mew-field-spec

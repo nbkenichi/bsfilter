@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.75 2005/11/14 14:52:36 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.76 2005/12/20 14:02:11 nabeken Exp $
 
 ## Copyright (C) 2003, 2004, 2005 NABEYA Kenichi
 ##
@@ -30,9 +30,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_10 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_11 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.75 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.76 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
 
 ##  Options = Hash::new           # used like a global variable
@@ -2235,7 +2235,7 @@ EOM
       else
         imap = Net::IMAP::new(@options["imap-server"], @options["imap-port"])
       end
-      imap.auto_authenticate(@options["imap-auth"], @options["imap-user"], @options["imap-password"], @options["imap-auth-preference"])
+      imap.auto_authenticate(@options, @options["imap-auth"], @options["imap-user"], @options["imap-password"], @options["imap-auth-preference"])
 
       files.each do |mailbox|
         target_mailbox = mailbox

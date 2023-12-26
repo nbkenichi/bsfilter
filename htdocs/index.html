@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="EUC-JP" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=EUC-JP" />
+<meta http-equiv="adalign" content="right" />
+<link rel="stylesheet" href="bsfilter.css" type="text/css" />
+<title>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</title>
+</head>
+
+<body>
+<p class="version">$Id: index.html,v 1.18 2004/08/13 18:13:32 nabeken Exp $</p>
+<h1>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</h1>
+
+<p class="icon">
+<a href="index.html">japanses</a>
+<a href="index-e.html">english</a>
+</p>
+
+<p class="icon">
+<a href="http://jigsaw.w3.org/css-validator/check/referer">
+<img src="vcss.png" alt="Valid CSS!" height="31" width="88" /></a>
+<a href="http://validator.w3.org/check/referer">
+<img src="valid-xhtml11.png" alt="Valid XHTML 1.1!" height="31" width="88" /></a>
+<a href="http://sourceforge.jp/">
+<img src="http://sourceforge.jp/sflogo.php?group_id=1011" alt="SourceForge.jp" width="96" height="31" /></a>
+</p>
+
+<h2>0. bsfilterとは</h2>
+<ul>
+<li>spamと、そうではない正当なメイル(このページではcleanと呼ぶ)を自動判定するフィルタ</li>
+<li>日本語に対応している</li>
+<li>rubyで書かれている</li>
+<li>3種類の使用方法がある<ul>
+	  <li><code>~/.procmailrc</code>等から呼び出し、ファイル(==メイル)を学習、判定する</li>
+	  <li>IMAPにより、サーバ内のメイルを学習、判定する</li>
+	  <li>POP proxyとして動作し、MUAが受信する際に判定する</li>
+</ul></li>
+<li>動作は<a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">スパムへの対策 ---A Plan for Spam</a>、
+<a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">ベイジアンフィルタの改善 --- Better Bayesian Filtering</a>、
+<a href="http://radio.weblogs.com/0101454/stories/2002/09/16/spamDetection.html">Spam Detection</a>
+を基本としている</li>
+<li>GPLのもと、配布されている</li>
+</ul>
+
+<h2><a id="toc">1. 目次</a></h2>
+<ul>
+<li><a href="#toc">1. 目次</a></li>
+<li><a href="#download">2. ダウンロード</a></li>
+<li><a href="#concept">3. ざっくり、どうなっているの?</a></li>
+<li><a href="#started">4. やってみよう</a></li>
+<li><a href="#help">5. ヘルプ</a></li>
+<li><a href="#usage">6. 使い方</a></li>
+<li><a href="#imap">7. 使い方(IMAP編)</a></li>
+<li><a href="#pop">8. 使い方(POP proxy編)</a></li>
+<li><a href="#faq">9. FAQ</a></li>
+<li><a href="#bug">10. バグ</a></li>
+<li><a href="#update">11. 更新履歴</a></li>
+<li><a href="#link">12. 情報源 / リンク</a></li>
+</ul>
+
+<h2><a id="download">2. ダウンロード</a></h2>
+<ul>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.4.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVSアクセス</strong></a></li>
+</ul>
+
+<h2><a id="concept">3. ざっくり、どうなっているの?</a></h2>
+<h3>3.1. 単語(token)のspam確率から判定する</h3>
+<p>あらかじめtokenごとのspam確率を求めておき、メイルの中にspam確率の高いtokenが多く含まれていたら、
+そのメイルがspamであると判定する。
+</p>
+<p class="fig"><img src="judge.png" alt="spam確率から判定" /></p>
+
+<h3>3.2. 準備が必要</h3>
+<p>実際に使用を開始する前に、spam確率を求めるという準備が必要である。
+判定済のメイル内のtoken出現回数を求め、spam / (clean + spam)により確率を求める。
+--add-clean, --add-spam, --updateというコマンドで準備を行う。
+</p>
+<p class="fig"><img src="prepare.png" alt="準備が必要" /></p>
+
+<h2><a id="started">4. やってみよう</a></h2>
+<h3>準備</h3>
+<p>実際に判定する前に、データベースを準備する必要がある。</p>
+<p>1. cleanなメイル中の単語を数える。</p>
+<pre>
+% bsfilter --add-clean ~/Mail/inbox/*
+</pre>
+<p>2. spam中の単語を数える。</p>
+<pre>
+% bsfilter --add-spam ~/Mail/spam/*
+</pre>
+<p>3. 単語ごとにclean/spamな確率を求める。</p>
+<pre>
+% bsfilter --update
+</pre>
+<p>以上で、準備終了。</p>
+
+<h3>判定</h3>
+<p>コマンドライン引数で判定対象のメイルを指定する例。0から1の範囲で、spam確率が表示される。</p>
+<pre>
+% bsfilter ~/Mail/inbox/1
+combined probability /home/nabeken/Mail/inbox/1 1 0.012701
+</pre>
+
+<p>標準入力から判定対象のメイルを入力する例。spamの場合、exit statusが0になる。</p>
+<pre>
+~% bsfilter &lt; ~/Mail/inbox/1 ; echo $status
+1
+~% bsfilter &lt; ~/Mail/spam/1 ; echo $status
+0
+</pre>
+<p><code>~/.procmailrc</code>から呼ぶときのサンプルレシピその1。
+exit statusを利用して、spamをspamフォルダに移動する。</p>
+<pre>
+:0 HB:
+* ? bsfilter -a
+spam/.
+</pre>
+<p><code>~/.procmailrc</code>から呼ぶときのサンプルレシピその2。spamに
+<code>X-Spam-Flag:</code>、<code>X-Spam-Probability:</code>ヘッダを追加し、
+X-Spam-Probabilityの示す確率に従い、blackフォルダ、grayフォルダに移動する。</p>
+<pre>
+:0 fw
+| /home/nabeken/bin/bsfilter --pipe --insert-flag --insert-probability
+
+:0
+* ^X-Spam-Probability: *(1|0\.[89])
+black/.
+
+:0
+* ^X-Spam-Probability: *0\.[67]
+gray/.
+</pre>
+
+<h2><a id="help">5. ヘルプ</a></h2>
+<p><a href="http://sourceforge.jp/forum/?group_id=1011">bsfilterフォーラム</a>へどうぞ。</p>
+
+<h2><a id="usage">6. 使い方</a></h2>
+<h3>コマンドラインの形式</h3>
+<p>以下の2通りの形式がある。</p>
+<ol>
+<li>bsfilter [options] [commands] &lt; MAIL</li>
+<li>bsfilter [options] [commands] MAIL ...</li>
+</ol>
+<p>maintenance modeとfiltering modeがある。</p>
+<ul>
+<li>commandsが指定されているときは、maintenance modeで動作し、データベースの更新を行なうが、spamの判定は行わない。</li>
+<li>commandsが指定されていないときは、filtering modeで動作し、spamの判定を行なうが、データベースの更新は行わない。</li>
+<li>filtering modeで--(synchronous-)auto-updateが指定されているときは例外で、spamの判定、データベースの更新、両方を行う。</li>
+</ul>
+<p>
+標準入力からメイルを与え、spamかどうか判定させるには、filtering modeで1の形式を使用する。
+spamの場合は、exit statusが0になる。
+<code>~/.procmailrc</code>から呼び出す場合は、通常、この形式になる。
+</p>
+<p>
+コマンドライン引数でメイルのファイルネームを与え、spamかどうか判定させる際には、filtering modeで2の形式を使用する。
+複数のメイルを同時に判定することが出来る。結果は標準出力に表示される。
+</p>
+
+<h3>コマンド一覧</h3>
+<dl>
+<dt>--add-clean</dt>
+<dt>-c</dt>
+<dd>cleanなメイル中のtokenをデータベースに足す。</dd>
+
+<dt>--add-spam</dt>
+<dt>-s</dt>
+<dd>spam中のtokenをデータベースに足す。</dd>
+
+<dt>--sub-clean</dt>
+<dt>-C</dt>
+<dd>cleanなメイル中のtokenをデータベースから引く。</dd>
+
+<dt>--sub-spam</dt>
+<dt>-S</dt>
+<dd>spam中のtokenをデータベースから引く。</dd>
+
+<dt>--update</dt>
+<dt>-u</dt>
+<dd>tokenごとのclean/spam確率が入っているデータベースを更新する。-c、-s等と同時に使われた場合は、メイル中のtokenについてのみ、確率データベースを更新する。</dd>
+
+<dt>--export-clean</dt>
+<dd>cleanなtokenをデータベースから独自フォーマットのテキストにエクスポートする。</dd>
+
+<dt>--export-spam</dt>
+<dd>spamなtokenをデータベースから独自フォーマットのテキストにエクスポートする。</dd>
+
+<dt>--import-clean</dt>
+<dd>cleanなtokenをデータベースへ独自フォーマットのテキストからインポートする。</dd>
+
+<dt>--import-spam</dt>
+<dd>spamなtokenをデータベースへ独自フォーマットのテキストからインポートする。</dd>
+
+<dt>--export-probability</dt>
+<dd>確率データベースをエクスポートする。デバッグ用の機能であり、インポートは出来ない。</dd>
+
+</dl>
+<p>複数のコマンドを同時に指定できる。</p>
+
+<h3>オプション一覧</h3>
+<dl>
+<dt>--homedir directory</dt>
+<dd>データベース、ロックファイルを作るホームディレクトリを指定する。
+--homedirオプションが使用されなかった場合は、
+BSFILTERHOME環境変数で設定されたディレクトリを使用する。
+BSFILTERHOME環境変数が設定されていない場合は、<code>~/.bsfilter</code>を使用する。
+HOME環境変数が設定されていない場合は、bsfilterのあるディレクトリを使用する。</dd>
+
+<dt>--config-file filename</dt>
+<dd>設定ファイルを指定する。デフォルトでは、上記bsfilterホームディレクトリの
+bsfilter.confが使用される。
+<pre>
+## example of bsfilter.conf
+jtokenizer MeCab
+spam-cutoff 0.6
+</pre>
+</dd>
+
+<dt>--max-line number</dt>
+<dd>先頭から指定した行数の範囲を、判定、学習の対象にする。</dd>
+
+<dt>--db sdbm|gdbm|bdb1|marshal</dt>
+<dd>データベースの形式を指定する。デフォルトはsdbm。<strong>marshalのサポートは将来、停止される。</strong></dd>
+
+<dt>--jtokenizer bigram|block|mecab|chasen|kakasi</dt>
+<dt>-j bigram|block|mecab|chasen|kakasi</dt>
+<dd>日本語のメイルからtokenを切り出す際のアルゴリズムを指定する。
+bigram(連続する漢字2文字で1token)、
+block(連続する漢字全部で1token)、
+<a href="http://cl.aist-nara.ac.jp/~taku-ku/software/mecab/">MeCab(和布蕪)</a>、
+<a href="http://chasen.aist-nara.ac.jp/">ChaSen</a>、
+<a href="http://kakasi.namazu.org/">KAKASI</a>を呼び出す方法をサポートしている。
+デフォルトはbigram。MeCab, ChaSen, KAKASIを使用するには、
+あらかじめrubyバインディングをインストールしておく必要がある。</dd>
+
+<dt>--method g|r|rf</dt>
+<dt>-m g|r|rf</dt>
+<dd>Paul Graham提案の方式に准ずるか(g)、
+Gary Robinson提案の方式に准ずるか(r)、
+Gary Robinson-Fisher方式に准ずるか(rf)を指定する。
+デフォルトはGary Robinson-Fisher方式。</dd>
+
+<dt>--spam-cutoff number</dt>
+<dd>spamの確率がいくつ以上だったら、spamと判定するかを指定する。
+デフォルトは、Paul Graham方式で0.9、Gary Robinson方式で0.582、Robinson-Fisher方式で0.95。</dd>
+
+<dt>--auto-update</dt>
+<dt>-a</dt>
+<dd>メイルがcleanかspamか判定し、その結果に基づいてメイル中のtokenをデータベースに足し、
+確率データベースも更新する。</dd>
+
+<dt>--disable-degeneration</dt>
+<dt>-D</dt>
+<dd>確率データベースを引く際の還元を抑止する。</dd>
+
+<dt>--disable-utf-8</dt>
+<dd>utf-8サポートを抑止する。</dd>
+
+<dt>--ignore-header</dt>
+<dt>-H</dt>
+<dd>メイルヘッダを無視する。</dd>
+
+<dt>--ignore-body</dt>
+<dt>-B</dt>
+<dd>URL、メイルアドレス以外のメイル本文を無視する。</dd>
+
+<dt>--ignore-plain-text-part</dt>
+<dd>htmlのパートがある場合、plain textのパートを無視する。</dd>
+
+<dt>--ignore-after-last-atag</dt>
+<dd>最後のA end tag以降を無視する。</dd>
+
+<dt>--mark-in-token "characters"</dt>
+<dd>token中に現れてもよい(== tokenの区切りにならない)記号を指定する。
+デフォルトでは、"*'!"が設定されている。</dd>
+
+<dt>--show-new-token</dt>
+<dd>新たにデータベースに追加されたtokenを表示する。</dd>
+
+<dt>--show-process</dt>
+<dd>動作の様子を表示する。
+左のカラムから、プロトコル、言語、判定結果、学習コマンド、日時、message-idを意味する。</dd>
+
+<dt>--show-db-status</dt>
+<dd>データベースの状況を表示して終了する。
+左のカラムから"db"(固定)、言語、clean tokenの数、clean mailの数、spam tokenの数、spam mailの数、確率データベース内のtoken数を意味する。</dd>
+
+<dt>--mbox</dt>
+<dd>mbox形式をサポート。ひとつのファイルを、"unix from"で区切られた複数のメイルとして扱う。</dd>
+
+<dt>--max-mail number</dt>
+<dd>token database中のメイルの数がこの値を越えたら、token databaseを縮小する。デフォルトは10000。</dd>
+
+<dt>--min-mail number</dt>
+<dd>token database中のtoken登場回数に、(min-mailで指定した数/max-mailで指定した数)を掛けることにより、token databaseの縮小を行う。
+デフォルトは8000。</dd>
+
+<dt>--pipe</dt>
+<dd>メイルをstdoutに出力する。</dd>
+
+<dt>--insert-flag</dt>
+<dd>stdoutに出力するメイルのヘッダに"X-Spam-Flag: Yes"か"X-Spam-Flag: No"を追加する。
+filtering modeの際には判定結果に基づき、maintenance modeの際にはコマンドに基づき、追加する。</dd>
+
+<dt>--insert-probability</dt>
+<dd>stdoutに出力するメイルのヘッダに、"X-Spam-Probability: number"を追加する。filtering modeでのみ有効。</dd>
+
+<dt>--insert-revision</dt>
+<dd>stdoutに出力するメイルのヘッダに、"X-Spam-Revision: bsfilter..."を追加する。filtering modeでのみ有効。</dd>
+
+<dt>--header-prefix string</dt>
+<dd>メイルのヘッダに、"X-Spam-..."ではなく、X-指定した文字列-..."を追加する。</dd>
+
+<dt>--list-clean</dt>
+<dd>cleanと判定されたファイルネームを表示する。判定対象のメイルをコマンドライン引数で与えた場合のみ有効。</dd>
+
+<dt>--list-spam</dt>
+<dd>spamと判定されたファイルネームを表示する。判定対象のメイルをコマンドライン引数で与えた場合のみ有効。</dd>
+
+<dt>--help</dt>
+<dt>-h</dt>
+<dd>ヘルプを表示する。</dd>
+
+<dt>--revision</dt>
+<dd>リビジョンを表示する。</dd>
+
+<dt>--verbose</dt>
+<dt>-v</dt>
+<dd>メッセージを多めに表示する。</dd>
+
+<dt>--debug</dt>
+<dt>-d</dt>
+<dd>デバッグ用のメッセージを表示する。</dd>
+</dl>
+
+<h2><a id="imap">7. 使い方(IMAP編)</a></h2>
+<p>IMAPでサーバと通信し、サーバに保存しているメイルを学習、判定することができる。
+判定結果に従い、ヘッダを挿入すること、指定したフォルダにメイルを移動するすることが可能である。
+</p>
+<p class="fig"><img src="imap.png" alt="IAMPサーバと通信" /></p>
+
+<h3>IMAPに関するオプション</h3>
+<dl>
+<dt>--imap</dt>
+<dd>IMAPを使用する場合に指定する。必須。</dd>
+
+<dt>--imap-server hostname</dt>
+<dd>IMAPサーバを指定する。必須。</dd>
+
+<dt>--imap-port number</dt>
+<dd>IMAPサーバが使用しているポート番号を指定する。デフォルトは143。</dd>
+
+<dt>--imap-auth cram-md5|login|loginc|auto</dt>
+<dd>認証方法を指定する。
+cram-md5(AUTHENTICATE CRAM-MD5命令)、
+login(AUTHENTICATE LOGIN命令)、
+loginc(LOGIN命令)、
+auto(cram-md5、login、logincの順で適当な方法を選択)が指定可能。デフォルトはauto。</dd>
+
+<dt>--imap-user user_name</dt>
+<dd>IMAPサーバでのユーザネームを指定する。必須。</dd>
+
+<dt>--imap-password password</dt>
+<dd>IMAPサーバのpasswordを指定する。必須。</dd>
+
+<dt>--imap-folder-clean folder_name</dt>
+<dd>cleanとして学習したメイル、cleanとして判定されたメイルを移動する先のフォルダを指定する。</dd>
+
+<dt>--imap-folder-spam folder_name</dt>
+<dd>spamとして学習したメイル、spamとして判定されたメイルを移動する先のフォルダを指定する。</dd>
+
+<dt>--imap-fetch-unseen</dt>
+<dd>SEENフラグが付いていないメイルのみを学習、判定の対象とするとき使用する。</dd>
+
+<dt>--imap-fetch-unflagged</dt>
+<dd>X-Spam-Flagヘッダが付いていないメイルのみを学習、判定の対象とするとき使用する。</dd>
+
+<dt>--imap-reset-seen-flag</dt>
+<dd>bsfilterがヘッダを挿入したメイル、別のフォルダに移動したメイルのSEENフラグをリセットする。</dd>
+</dl>
+
+<h3>--imapを使用している場合に無効なオプション</h3>
+<p>--pipeは無効である。</p>
+
+<h3>使用例</h3>
+<p>bsfilter.confの例</p>
+<pre>
+imap-server server.example.com
+imap-auth login
+imap-user hanako
+imap-password open_sesame
+</pre>
+<p>inboxの中のX-Spam-Flagがついていないメイルを判定し、判定結果をヘッダに入れ、spamの場合はinbox.spamに移動する例</p>
+<pre>
+% bsfilter --imap --imap-fetch-unflagged --insert-flag --insert-probability --imap-folder-spam inbox.spam inbox
+</pre>
+
+<h2><a id="pop">8. 使い方(POP proxy編)</a></h2>
+<p>POP proxyとして動作し、MUAがサーバからPOPで受信する経路の途中で、メイルを判定し、ヘッダを挿入することが可能である。--auto-updateによる自動学習は行えるが、--add-clean、--add-spamによる学習は行えない。
+</p>
+<p class="fig"><img src="pop.png" alt="POP proxyとして動作" /></p>
+
+<dl>
+<dt>--pop</dt>
+<dd>POP proxyとして動作させる場合に指定する。必須。</dd>
+
+<dt>--tasktray</dt>
+<dd>windowsでVisualuRuby使用時、タスクトレイに常駐させる。</dd>
+
+<dt>--pop-server hostname</dt>
+<dd>POPサーバを指定する。</dd>
+
+<dt>--pop-port number</dt>
+<dd>POPサーバが使用しているポート番号を指定する。デフォルトは110。</dd>
+
+<dt>--pop-proxy-if address</dt>
+<dd>bsfilterがメイラからのリクエストを受け取るインターフェイスのアドレスを指定する。
+デフォルトは0.0.0.0で全てのインターフェイスから受け取る。</dd>
+
+<dt>--pop-proxy-port number</dt>
+<dd>bsfilterがメイラからのリクエストを受け取るポート番号を指定する。デフォルトは10110。</dd>
+
+<dt>--pop-user name</dt>
+<dd>特定のユーザのみ使用を許可する場合に使用する。POPサーバでのユーザネームを指定する。</dd>
+
+<dt>--pop-proxy-set set[,set...]</dt>
+<dd>
+POP proxyのルールを記述する。複数記述できる。--pop-server, --pop-port, --pop-proxy-port, --pop-userオプションの代りに使用する。
+ルールのフォーマットは"pop-server:[pop-port]:[proxy-interface]:proxy-port[:pop-user]"
+<dl>
+<dt>pop-server</dt><dd>POPサーバを指定する。</dd>
+<dt>pop-port</dt><dd>POPサーバが使用しているポート番号を指定する。省略時は110。</dd>
+<dt>proxy-interface</dt><dd>bsfilterがメイラからのリクエストを受け取るインターフェイスを指定する。省略時は全てのインターフェイスから受け取る。</dd>
+<dt>proxy-port</dt><dd>bsfilterがメイラからのリクエストを受け取るポート番号を指定する。</dd>
+<dt>pop-user</dt><dd>特定のユーザのみ使用を許可する場合に使用する。POPサーバでのユーザネームを指定する。</dd>
+</dl></dd>
+
+<dt>--pop-max-size number</dt>
+<dd>指定したバイト数以上のメイルについては処理をバイパスし、判定、学習の対象にしない。
+0を指定すると、全てのファイルを判定、学習の対象にする。デフォルトは30000(30Kbytes)。</dd>
+
+<dt>--pid-file filename</dt>
+<dd>Process IDを記録するファイルネームを指定する。デフォルトは、bsfilterホームディレクトリのbsfilter.pid。</dd>
+</dl>
+
+<h3>--popを使用している場合に無効なオプション</h3>
+<p>--pipe、及び、--add-clean等、学習に関するコマンド、オプションは無効である。</p>
+
+<h3>使用例</h3>
+<p>bsfilter.confの例</p>
+<pre>
+pop-server server.example.com
+pop-proxy-port 10110
+pop-user taro
+insert-flag
+insert-probability
+</pre>
+<p>bsfilterを起動したホストのボート10110をアクセスするようにMUAの設定を変更し、以下のようにbsfilterを起動する。
+MUAがメイルを受信すると判定結果がX-Spam-Flag, X-Spam-Probabilityヘッダに入る。判定結果に従い、bsfilterのデータベースが更新される。</p>
+<pre>
+% bsfilter --pop --auto-update
+</pre>
+
+<h2><a id="faq">9. FAQ</a></h2>
+<h3>Q. in `get_all_responses': Mailbox does not exist, or must be subscribed to. (Net::IMAP::NoResponseError)というエラーで落ちるのだけど</h3>
+<p>メイルボックスの名前が間違っていると思われる。ruby-1.8のimap.rbで以下のようにして調べるとよい。</p>
+<pre>
+% ruby /usr/local/lib/ruby/1.8/net/imap.rb --user=taro --auth=login imap-server.example.com
+password: ******
+taro@imap-server.example.com&gt; list
+ INBOX.junk
+ INBOX
+</pre>
+
+
+<h3>Q. windowsで使いたいのだけど?</h3>
+<p>mswin32版、cygwin版等、既にRubyがインストール済みの場合は、bsfilterのソースを普通に実行すればよい。
+Rubyがインストールされていない場合は、bsfilter.exe、bsfilterw.exeを使用するのが簡単。iconv.dllが別途必要。</p>
+<ul>
+<li>コマンドプロンプトで、データベースの管理等を行う場合は、bsfilter.exeがお薦め。</li>
+<li>スタートアップでpop proxyとして動作させる場合は、bsfilterw.exeがお薦め。
+--verbose, --debug, --show-new-token等、メッセージを出力するオプションは使用できない。
+オプション、引数なしで起動すると、標準入力からメイルを読もうとしてエラーするのは仕様。</li>
+</ul>
+<p><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter設定メモ(Windows編)</a>が詳しい。</p>
+
+<h3>Q. exit statusはどのようになっている?</h3>
+<p>通常は0。--pipeオプションなしで判定対象メイルを標準入力から与えた場合のみ、判定結果をexit statusから得ることが出来る。
+その場合、spamは0、cleanは1というexit statusになる。</p>
+
+<h3>Q. <code>No such file to load -- sdbm</code>というエラーが出る。</h3>
+<p>revision 1.32.4.4で、デフォルトのデータベース形式がsdbmに変更になったが、
+デフォルトではsdbmを使用できないプラットホームがある。
+対策としては、<code>--db marshal</code>を指定してsdbmの使用を止める方法があるが、実行速度の点からお薦めしない。
+sdbmが使用できるように、例えばdebianの場合は、libsdbm-rubyをインストールすることを推奨する。</p>
+
+<h3>Q. mew用のフロントエンドはある?</h3>
+<p>ある。<a href="mew.html">bsfilter mew front-end</a>を参照。</p>
+
+<h3>Q. Wanderlustから使うには?</h3>
+<p>やまだあきらさんがwl-bsfilter.elを公開中。 
+<a href="http://arika.org/diary/20030718.html#p01">\ay diary</a>、
+<a href="http://lists.airs.net/wl/archive/200307/msg00049.html">Re: Mark &amp; Action (Re: 2種類の削除コマンド)</a>から。</p>
+
+<h3>Q. 日本語の取り扱いは?</h3>
+<p>メイルが日本語か否かをad hocに判断し、日本語らしき場合はnkf.soでEUC
+に変換している。Subjectや本文でISO-2022-JPと名乗りつつ、実際のコードは
+shift jisというケースも、nkfが救ってくれている模様。iconvが使えれば、unicodeもサポート。
+</p>
+<p>各種データベースは、日本語用とその他用に分けてある。</p>
+<p>デフォルトでは連続する漢字2文字(bigram)、カタカナをtokenとして扱っている。
+MeCab(和布蕪)による形態素解析を行うには、MeCabとrubyバインディングをインストールし、
+<code>--jtokenizer MeCab</code>を指定すればよい。ChaSen, KAKASIについても同様。</p>
+
+<h3>Q. -aオプションを使用したら、cleanなメイルをspamと誤判定された。誤判定に基づき更新されたデータベースに対する対処は?</h3>
+<p>誤判定されたメイルが<code>~/Mail/spam/123</code>であるなら、</p>
+<pre>
+% bsfilter --sub-spam --add-clean --update ~/Mail/spam/123 
+</pre>
+<p>とする。<code>~/Mail/spam/123</code>をspam token databaseから削除し、
+clean token databaseに追加し、確率データベースを更新する。</p>
+
+<h3>Q. 過去に受け取ったspamを保存していないので、spam token databaseが作れない。どうればよい?</h3>
+<p><a href="http://tlec.linux.or.jp/docs/spamassassin.html">TLEC presents spamassassin を fetchmail から利用する方法</a>
+で紹介されている、
+<a href="http://www.flcl.org/~yoh/spam9xxxx.tar.gz">Linux-usersメイリングリストのspamをかき集めたもの</a>を利用するのが便利。</p>
+
+<h3>Q. Paul Graham方式、Gary Robinson方式、Gary Robinson-Fisher方式を切り替えるには?</h3>
+<p>Paul Graham方式と、Gary Robinson、Gary Robinson-Fisher方式との間で切り替えるには、
+-uでspam確率データベースを更新するところからやり直す。spam確率データベースを更新するとき(maintenance mode)と、
+メイルをspamか判定させるとき(filtering mode)とで、同じ方式を-mオプションで指定する必要がある。</p>
+<p>Gary Robinson方式と、Gary Robinson-Fisher方式の間で切り替えるときには、-uは不要である。</p>
+<p>-c、-sでtokenを数えるところは方式に依存していないので、どの場合もやり直す必要はない。</p>
+
+<h3>Q. Paul Graham方式とGary Robinson方式の違いは?</h3>
+<p>tokenごとのspam確率を求める方法、それを使用してメイルのspam確率を求める方法、両方とも異なる。</p>
+<p>Paul Graham方式でのtokenごとのspam確率をpg(w)とする。pg(w)を求める際の特徴を挙げる。</p>
+<ul>
+<li>cleanな方向にバイアスをかけるために、cleanなメイル中での実際のtoken出現回数を2倍してから、計算する。</li>
+<li>過去に出会ったことのないtokenのpg(w)は、0.4とする。</li>
+</ul>
+<p>Gary Robinson方式でのtokenごとのspam確率をf(w)とする。以下のように求める。</p>
+<ul>
+<li>token出現回数にバイアスをかけずに、tokenごとのspam確率p(w)を求める。</li>
+<li>全tokenでのp(w)の平均値をrobx、tokenの出現回数をn、ある定数(例えば0.001)をrobsとして、
+<pre>
+f(w) = ((s * robx) + (n * p(w))) / (robs + n)
+</pre>
+とする。過去に出会ったことのないtokenのf(w)も、この式でカバーされる。</li>
+</ul>
+<p>Paul Graham方式では、特徴的な(0.5より遠い)pg(w)を持つ15のtokenを使用してcombining probabilityを求め、
+それをメイルのspam確率としている。</p>
+<p>Gary Robinson方式では、以下で求めたSをメイルのspam確率とする(bsfilterが表示するのはS2)。</p>
+<pre>
+P = 1 - ((1 - f(w1)) * (1 - f(w2)) * ... * (1 - f(wn))) ^ (1 / n)
+Q = 1 - (f(w1) * f(w2) * ... * f(wn)) ^ (1 / n)
+S = (P - Q) / (P + Q)
+S2 = (1 + S) / 2
+</pre>
+
+<h3>Q. Gary Robinson方式とGary Robinson-Fisher方式の違いは?</h3>
+<p>f(w)を求めるところまでは同じ。それ以降、Robinson-Fisher方式では以下のように計算する。</p>
+<pre>
+P = ((1 - f(w1)) * (1 - f(w2)) * ... * (1 - f(wn))) ^ (1 / n)
+Q = (f(w1) * f(w2) * ... * f(wn)) ^ (1 / n)
+P' = 1 - chi-square(-2 * log(P), 2 * n)
+Q' = 1 - chi-square(-2 * log(Q), 2 * n)
+S = (1 + P' - Q') / 2
+</pre>
+
+<h2><a id="bug">10. バグ</a></h2>
+<p>utf-8なメイルはどんなものであれ、日本語のメイルとして扱ってしまう。</p>
+<p>
+コマンドライン引数で、mbox形式のファイルを指定することも可能であるが、
+<code>Content-length</code>ヘッダを見る機能がない。そのため、Solarisのように
+本文中の"From"がエスケープされないシステムでは、本文中の"From"を
+UnixFromと見誤ることが考えられる。
+bsfilterが表示するメイルの番号と、MUAでの番号が食い違う障害が発生すると思われる。
+</p>
+<p>コードが汚い。</p>
+<p>bsfilterという名前が安直。</p>
+
+<h2><a id="update">11. 更新履歴</a></h2>
+<p><a href="http://nabeken.tdiary.net">筆者の日記</a>の
+<a href="http://nabeken.tdiary.net/?year=2004;category=bsfilter">bsfilterカテゴリ</a>で代用。</p>
+
+<h2><a id="link">12. 情報源 / リンク</a></h2>
+<ul>
+
+<li>bsfilterについて<ul>
+<li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilterフォーラム</strong></a></li>
+<li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html"><strong>bsfilter</strong></a> qmailで使う方法が載っている</li>
+<li><a href="http://www.wikiroom.com/mew/?Mew4FAQ"><strong>Mew4 FAQ</strong></a> mewからPOP proxyとして使う方法が載っている</li>
+<li><a href="http://www.fkimura.com/bsfilter0.html">bsfilterを導入利用してみるメモ</a></li>
+<li><a href="http://www.netlaputa.ne.jp/~kose/Emacs/200403.html#3.+spam+fi">Practice makes perfect</a></li>
+<li><a href="http://www.db.is.kyushu-u.ac.jp/computer/solarisserver/bsfilter.html">Solaris での bsfilter</a></li>
+<li><a href="http://www.imasy.or.jp/~tai/wiki/index.php?BsFilterHelper">BsFilterHelper</a></li>
+<li><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter設定メモ(Windows編)</a></li>
+<li><a href="http://www.pitecan.com/Lens/">Lens(メール振り分けプログラム)</a> bsfilterを使用するサンプルが載っている</li>
+<li><a href="http://www.ganaware.jp/archives/000002.html">GANAware:IMAP</a>Mew4から使用する方法が載っている</li>
+<li><a href="http://megane.no-ip.info:8080/tiki/tiki.cgi?c=v&amp;p=bsfilter">H.Okada bsfilter</a></li>
+<li><a href="http://dir.itc.u-tokyo.ac.jp/~okabe/ja/bsfilter.shtml">スパムフィルタ BsFilter の設定</a></li>
+<li><a href="http://w3.itoh.net/bsfilter.html">bsfilterでSPAM撲滅</a></li>
+<li><a href="http://www.shinonon.dyndns.org/diary/20031210.html#p01">bsfilter on beckrb</a> Becky! ver.2のプラグインであるbeckrbで、bsfilterを使ってSPAMフィルタリングするスクリプト</li>
+<li><a href="http://www.eonet.ne.jp/~yasuo/bsfilter/">bsfilter on Mac OS X</a> POP proxyとして使う方法が載っている</li>
+<li><a href="http://www.studio-sbs.org/diary/?200308c&amp;to=200308280#200308280">真・講習会転倒日記</a> postfix -&gt; bsfilter -&gt; sieve -&gt; cyrus imapd という経路での使用方法が説明されている</li>
+<li><a href="http://www.olug.gr.jp/index.php?%5B%5Bbsfilter%5D%5D">沖縄Linuxユーザー会(OLUG)のページ</a> MLサーバでの使用例が載っている</li>
+<li><a href="http://kazuhiko.tdiary.net/20030522.html#p02">ふぇみにん日記</a> qmailで使う方法が載っている</li>
+</ul></li>
+
+<li>spamについて<ul>
+<li><a href="http://www.isc.meiji.ac.jp/~hhat/report/SPAM.pdf">Bayesian Filteringを用いたspam対策(pdf)</a> bsfilterを使用した評価も載っている</li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">スパムへの対策 ---A Plan for Spam</a></li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">ベイジアンフィルタの改善 --- Better Bayesian Filtering</a></li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/ffb-j.html">反撃するフィルタ --- Filters That Fight Back</a></li>
+<li><a href="http://www.sophos.com/spaminfo/explained/fieldguide.html">Field Guide to Spam</a></li>
+<li><a href="http://radio.weblogs.com/0101454/stories/2002/09/16/spamDetection.html">Spam Detection</a></li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/wiliki/wiliki.cgi?Shiro%3aUnixUser0309&amp;l=jp">Shiro:UnixUser0309</a></li>
+</ul></li>
+
+<li>spam対策ツールについて<ul>
+<li><a href="http://www.shiro.dreamhost.com/scheme/wiliki/wiliki.cgi?Gauche%3ASpamFilter&amp;l=jp">Gauche:SpamFilter</a></li>
+<li><a href="http://sheepman.parfait.ne.jp/wiki/BayesianSpamFilter/">羊堂本舗 BayesianSpamFilter</a></li>
+<li><a href="http://www.geocities.co.jp/SiliconValley-PaloAlto/7043/index.html#spamfilter.el">spamfilter.el</a></li>
+</ul></li>
+
+<li>開発に使用しているツールについて<ul>
+<li><a href="http://www.ruby-lang.org/ja/">オブジェクト指向スクリプト言語Ruby</a></li>
+<li><a href="http://exerb.sourceforge.jp/">Exerb Project</a></li>
+<li><a href="http://www.osk.3web.ne.jp/~nyasu/software/vrproject.html">VisualuRuby計画（仮称）</a></li>
+</ul></li>
+
+</ul>
+
+</body>
+</html>

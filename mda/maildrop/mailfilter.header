@@ -1,0 +1,9 @@
+# $Id: mailfilter.header,v 1.1 2004/02/29 04:53:35 nabeken Exp $
+# you should make "Maildir/spam" by "maildirmake"
+
+xfilter "bsfilter --pipe --insert-flag --insert-probability"
+
+if (/^X-Spam-Flag: Yes/:h)
+{
+	to Maildir/spam
+}

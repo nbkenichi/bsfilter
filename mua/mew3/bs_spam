@@ -1,0 +1,23 @@
+#! /bin/sh
+## $Id: bs_spam,v 1.1 2004/02/28 15:24:09 nabeken Exp $
+
+bsfilter=bsfilter
+log=$HOME/.bsfilter/log
+umask 077
+
+mark_one () {
+    $bsfilter -u --add-spam --sub-clean --pipe --insert-flag < $target > $target.$$ 2>> $log
+
+    if [ $? -eq  0 ]; then
+	/usr/bin/touch -r $target $target.$$
+	mv $target.$$ $target
+    fi
+}
+
+while [ "$*" != "" ]; do
+    target=$1
+    if [ -r $target -a -f $target ]; then
+	mark_one
+    fi
+    shift
+done

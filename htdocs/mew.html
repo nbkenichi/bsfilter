@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="EUC-JP ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
+
+<head>
+<title>bsfilter mew front-end</title>
+<meta http-equiv="content-type" content="text/html; charset=EUC-JP" />
+<meta http-equiv="adalign" content="right" />
+<link rel="stylesheet" href="bsfilter.css" type="text/css" />
+</head>
+
+<body>
+<p class="version">$Id: mew.html,v 1.1 2004/03/07 12:42:19 nabeken Exp $</p>
+<h1>bsfilter mew front-end</h1>
+
+<p class="icon">
+<a href="http://jigsaw.w3.org/css-validator/check/referer">
+<img src="vcss.png" alt="Valid CSS!" height="31" width="88" /></a>
+<a href="http://validator.w3.org/check/referer">
+<img src="valid-xhtml11.png" alt="Valid XHTML 1.1!" height="31" width="88" /></a>
+<a href="http://sourceforge.jp/">
+<img src="http://sourceforge.jp/sflogo.php?group_id=1011" alt="SourceForge.jp" width="96" height="31" /></a>
+</p>
+
+<p><a href="index.html">index</a></p>
+<h2>bsfilter mew front-endとは</h2>
+<p>mewのsummaryモードからbsfilterの呼び出しを可能にする、emacs lispとshell script。</p>
+
+<h2>インストール</h2>
+<ul>
+<li>mua/mew3/mew.elを~/.mew.elに追加する。</li>
+<li>mua/mew3/bs_mark、bs_clean、bs_spamを、PATHの通ったディレクトリに置く。</li>
+</ul>
+
+<h2>使い方</h2>
+<p>summaryモードで以下が利用できる。</p>
+<dl>
+<dt>bm</dt>
+<dd>カーソルのある行のメイルを、cleanかspamか判定。判定結果に従い、メイルのヘッダに"X-Spam-Flag: Yes"などを追加し、"*"マークを付ける。</dd>
+<dt>bM</dt>
+<dd>bmと同じ処理を、"@"マークがついている全てのメイルに対して行う。
+「"X-Spam-Flag: Yes"はSPAMフォルダに移動する」というような振り分けルールを設定しておき、bMの後にC-u M-oするのがお薦め。</dd>
+<dt>bc</dt>
+<dd>カーソルのある行のメイルに対して、--add-clean --sub-spam --updateを行う。
+-aでの誤判定(cleanをspamと誤判定)に基づき更新されたデータベースを修復するのに使用できる。</dd>
+<dt>bC</dt>
+<dd>bcと同じ処理を、"@"マークがついている全てのメイルにたいして行う。</dd>
+<dt>bs</dt>
+<dd>カーソルのある行のメイルに対して、--sub-clean --add-spam --updateを行う。
+-aでの誤判定(spamをcleanと誤判定)に基づき更新されたデータベースを修復するのに使用できる。</dd>
+<dt>bS</dt>
+<dd>bsと同じ処理を、"@"マークがついている全てのメイルにたいして行う。</dd>
+</dl>
+
+<p><a href="index.html">index</a></p>
+
+</body>
+</html>

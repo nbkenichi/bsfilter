@@ -1,0 +1,20 @@
+/* $Id: bsfilter.css,v 1.1 2004/03/07 13:00:37 nabeken Exp $ */
+h1 {text-align: center}
+h2 {text-align: left}
+body {color: black; background-color: white}
+.fig {text-align: center}
+.icon {text-align: right}
+.version {text-align: right}
+.section {margin-bottom:  1em; margin-left:  2em}
+
+blockquote {color: green}
+cite {color: green}
+.blockcite {text-align: right}
+q {color: green}
+.quote {color: green}
+
+a img {border: 0; color: white}
+strong {color: red; font-size: 100%}
+a:link {color: blue}
+a:visited {color: navy}
+a:active {color: red}

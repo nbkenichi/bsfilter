@@ -1,0 +1,12 @@
+# $Id: procmailrc.black_gray,v 1.1 2004/02/28 15:25:01 nabeken Exp $
+
+:0 fw
+| bsfilter -a --pipe --insert-flag --insert-probability
+
+:0
+* ^X-Spam-Probability: *(1|0\.[89])
+Mail/black/.
+
+:0
+* ^X-Spam-Probability: *0\.[67]
+Mail/gray/.

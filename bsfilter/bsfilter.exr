@@ -1,0 +1,29 @@
+## $Id: bsfilter.exr,v 1.2 2004/06/05 09:55:48 nabeken Exp $
+## recipe for Exerb 3.2.0
+## need to specify --corefile and --outfile
+
+set_kcode	none
+add_ruby_script	bsfilter
+add_ruby_script	getoptlong.rb	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/getoptlong.rb
+add_ruby_script	timeout.rb	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/timeout.rb
+add_ruby_script	monitor.rb	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/monitor.rb
+add_ruby_script	net/imap.rb	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/net/imap.rb
+add_extension_library	nkf.so		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/nkf.so
+add_extension_library	iconv.so	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/iconv.so
+add_extension_library	socket.so	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/socket.so
+add_extension_library	sdbm.so		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/sdbm.so
+add_extension_library	gdbm.so		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/gdbm.so
+add_extension_library	digest.so	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/digest.so
+add_extension_library	digest/md5.so	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/digest/md5.so
+
+add_extension_library	Win32API.so	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/Win32API.so
+add_extension_library	swin.so		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/i386-mswin32/swin.so
+add_ruby_script	vr/compat/rubycompat.rb		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/compat/rubycompat.rb
+add_ruby_script	vr/compat/vrcontrol.rb		/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/compat/vrcontrol.rb
+add_ruby_script	vr/contrib/vrwincomponent.rb	/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/contrib/vrwincomponent.rb
+add_ruby_script	vr/rscutil.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/rscutil.rb
+add_ruby_script	vr/sysmod.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/sysmod.rb
+add_ruby_script	vr/vrcontrol.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/vrcontrol.rb
+add_ruby_script	vr/vrtray.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/vrtray.rb
+add_ruby_script	vr/vruby.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/vruby.rb
+add_ruby_script	vr/winconst.rb			/usr/local/lib/ruby/site_ruby/1.8/exerb/1.8/vr/winconst.rb

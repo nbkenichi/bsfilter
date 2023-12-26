@@ -1,0 +1,3100 @@
+#! /usr/bin/env ruby
+## -*-Ruby-*- $Id: bsfilter,v 1.63 2004/07/30 16:49:10 nabeken Exp $
+
+## Copyright (C) 2003, 2004 NABEYA Kenichi
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 2 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program; if not, write to the Free Software
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+require 'getoptlong'
+require 'nkf'
+
+class Bsfilter
+  def initialize
+    @threads = Array::new
+    @token_dbs = nil
+  end
+  attr_accessor :token_dbs
+
+  Release = "$Name: release_1_0_4 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release.concat("-") if (Release == "")
+  Revision = "$Revision: 1.63 $".gsub(/[^\.\d]/, '')
+  Languages = ["C", "ja"]
+  Options = Hash::new           # used like a global variable
+  DB = Hash::new
+  
+  Default_header_prefix = "Spam"
+  
+  Default_jtokenizer = "bigram"
+  Default_mark_in_token = "!*'"
+  Default_homedir = ".bsfilter"
+  Default_conf_file = "bsfilter.conf"
+  Default_pid_file = "bsfilter.pid"
+  
+  Default_method = "rf"           # Robinson Fisher
+  Default_db = "sdbm"
+  Default_max_mail = 10000
+  Default_min_mail = 8000
+  Default_max_line = 500
+  
+  Default_pop_proxy_if = "0.0.0.0"
+  Default_pop_port = "110"
+  Default_pop_proxy_port = "10110"
+  Default_pop_max_size = 50000
+  
+  Default_imap_port = "143"
+  Default_imap_auth = "auto"
+  Default_imap_auth_preference = ["cram-md5", "login", "loginc"]
+  
+  Clean_ext = ".clean"
+  Spam_ext = ".spam"
+  Prob_ext = ".prob"
+  Lock_ext = ".lock"
+  
+  Marshal_ext = ".db"
+  SDBM_ext = ".sdbm"
+  GDBM_ext = ".gdbm"
+  BDB1_ext = ".bdb1"
+  
+  EXIT_NORMAL = 0
+  CODE_NORMAL = true
+  CODE_SPAM = true
+  CODE_CLEAN = false
+  
+  CODESET_EUCJP = "eucJP"
+  CODESET_LATIN = "ISO8859-1"
+  CODESET_UTF8 = "UTF-8"
+  PATTERN_UTF8 = '[\xe0-\xef][\x80-\xbf][\x80-\xbf][\xe0-\xef][\x80-\xbf][\x80-\xbf]'
+  RE_UTF8 = Regexp.new(PATTERN_UTF8, 'n')
+  
+  ALL_TAGS = ["html", "head", "title", "meta", "body", "div", "spam",
+              "h1", "h2", "h3", "h4", "h5", "h6",
+              "em", "strong", "font", "basefont", "big", "small",
+              "b", "i", "s", "u", "tt", "sub", "sub",
+              "rb", "rp", "rt","ruby",
+              "blink", "marquee",
+              "dfn", "cite", "abbr", "acronym",
+              "blockquote", "q",
+              "br", "pre", "ins", "del", "center", "style", "hr",
+              "ul", "ol", "li", "dl", "dt", "dd",
+              "table", "caption", "thead", "tbody", "tfoot",
+              "colgroup", "col", "tr", "td", "th",
+              "a", "link", "base", "img", "address",
+              "form", "input", "select", "option", "textarea", "label",
+              "fieldset", "legend", "optgroup",
+              "frameset", "frame", "nofrmaes", "iframe"].join('|')
+  
+  SPACE_TAGS = "br|p|td|tr|table|ul|ol|dl|li|dt|dd"
+  
+  RE_ALL_TAGS = Regexp::compile('\A<(' + ALL_TAGS + ')\b', Regexp::IGNORECASE, 'n')
+  RE_SPACE_TAGS = Regexp::compile('\A<(' + SPACE_TAGS + ')\b', Regexp::IGNORECASE, 'n')
+  
+  
+  SOCKET_TIMEOUT = 30             # for single socket operation
+  
+  module Bsutil
+    def insert_header!(buf, header, content)
+      buf[0] =~ /([\r\n]*)\z/
+      eol = $1
+      
+      (0 ... buf.length).each do |i|
+        if (buf[i] =~/\A(.*?:)/)
+          h = $1
+          if (h == header)
+            buf[i] = "#{header} #{content}#{eol}"
+            break
+          end
+        elsif (buf[i] =~ /\A[\r\n]*\z/)
+          buf[i, 0] = "#{header} #{content}#{eol}"
+          break
+        end
+      end
+    end
+
+    def x_spam_flag
+      return sprintf("X-%s-Flag:", Options["header-prefix"])
+    end
+    
+    def x_spam_probability
+      return sprintf("X-%s-Probability:", Options["header-prefix"])
+    end
+    
+    def x_spam_revision
+      return sprintf("X-%s-Revision:", Options["header-prefix"])
+    end
+    
+    def insert_headers!(buf, spam_flag, probability=nil)
+      updated = false
+      if (Options["insert-revision"])
+        insert_header!(buf, x_spam_revision, "bsfilter release #{Release} revision #{Revision}")
+        updated = true
+      end
+      if (Options["insert-flag"])
+        updated = true
+        if (spam_flag)
+          insert_header!(buf, x_spam_flag, "Yes")
+        else
+          insert_header!(buf, x_spam_flag, "No")
+        end
+      end
+      if (Options["insert-probability"] && probability)
+        updated = true
+        insert_header!(buf, x_spam_probability, sprintf("%f", probability))
+      end
+      return updated
+    end
+  end                           # end of module
+
+  include Bsutil
+
+  class DevNull
+    def sync=(*args)
+    end
+    def print(*args)
+    end
+    def printf(*args)
+    end
+  end
+
+  class DBHash < Hash
+    def flatten(magic="###", head="", &block)
+      self.each do |k, v|
+        if (v.class == DBHash)
+          if (head == "")
+            v.flatten(magic, k, &block)
+          else
+            v.flatten(magic, head + magic + k, &block)
+          end
+        else
+          if (head == "")
+            yield k, v
+          else
+            yield head + magic + k, v
+          end
+        end
+      end
+    end
+    
+    def add(hash)
+      hash.each do |k, v|
+        if (self[k])
+          if ((self[k].class == DBHash) &&
+              (v.class == DBHash))
+            self[k].add(v)
+          else
+            self[k] += v
+          end
+        else
+          self[k] = v             # should do deep copy ?
+        end
+      end
+    end
+    def sub(hash)
+      hash.each do |k, v|
+        if (self[k])
+          if ((self[k].class == DBHash) &&
+              (v.class == DBHash))
+            self[k].sub(v)
+            if (self[k].empty?)
+              self.delete(k)
+            end
+          else
+            if (self[k] > v)
+              self[k] -= v
+            else
+              self.delete(k)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def safe_require(file)
+    begin
+      require file
+      return true
+    rescue LoadError
+      return false
+    end
+  end
+
+  def latin2ascii(str)
+    newstr = str.tr("\x92\x93\x94", "'''")
+    newstr.tr!("\xc0-\xc5\xc8-\xcb\xcc-\xcf\xd2-\xd6\xd9-\xdc", "AAAAAAEEEEIIIIOOOOOUUUU")
+    newstr.tr!("\xe0-\xe5\xe8-\xeb\xec-\xef\xf2-\xf6\xf9-\xfc", "aaaaaaeeeeiiiiooooouuuu")
+    return newstr
+  end
+
+  def define_safe_iconv
+    def Iconv.safe_iconv(tocode, fromcode, *strs)
+      return strs.map do |str|
+        array = Array::new
+        strs.each do |str|
+          str.split(/(\s+)/).each do |word|
+            begin
+              array.push(Iconv.iconv(tocode, fromcode, word)[0])
+            rescue
+              array.push(' ')
+            end
+          end
+        end
+        array.join
+      end
+    end
+    def Iconv.u2eucjp(str)
+      return NKF::nkf('-e -E -X -Z0', (Iconv.safe_iconv(CODESET_EUCJP, CODESET_UTF8, str))[0])
+    end
+    def Iconv.u2latin(str)
+      return (Iconv.safe_iconv(CODESET_LATIN, CODESET_UTF8, str))[0]
+    end
+  end
+  
+  def open_ro(file)
+    if (file == "-")
+      fh = STDIN
+      yield fh
+    elsif (file.class == Array)
+      file.instance_eval <<EOM
+      @eof = false
+      def gets
+        @n = 0 if (! @n)
+        if (@n >= self.length)
+          nil
+        else
+          @n = @n + 1
+          self[@n - 1]
+        end
+      end
+      def readlines
+        @eof = true
+        self
+      end
+      def eof?
+        (@eof || empty?)
+      end
+EOM
+      yield file
+    else
+      if (! FileTest::file?(file))
+        raise sprintf("%s is not file", file)
+      end
+      fh = open(file)
+      yield fh
+      fh.close
+    end
+  end
+  
+  def open_wo(file, &block)
+    if (file == "-")
+      fh = STDOUT
+    else
+      fh = open(file, "w")
+    end
+    if (block)
+      yield fh
+      if (file != "-")
+        fh.close
+      end
+    else
+      return fh
+    end
+  end
+  
+  class FLOAT
+    def initialize(f=0, power=1)
+      @mant = 0
+      @exp = 0
+      set_f(f, power)
+    end
+    attr_accessor :mant, :exp
+    
+    def to_f
+      return @mant * Math::exp(@exp)
+    end
+    
+    def ln
+      return Math::log(@mant) + @exp
+    end
+    
+    def * (a)
+      if (a.class == FLOAT)
+        n = FLOAT::new
+        n.mant = @mant * a.mant
+        n.exp = @exp + a.exp
+      else
+        n = FLOAT::new
+        n.exp = @exp
+        n.mant = @mant * a
+      end
+      return n
+    end
+    def set_f (a, power=1)
+      if (a > 0)
+        @mant = 1
+        @exp = Math::log(a) * power
+      elsif (a < 0)
+        @mant = -1
+        @exp = Math::log(-a) * power
+      else
+        @mant = 0
+        @exp = 0
+      end
+      @self
+    end
+  end
+  
+  
+  module TokenAccess
+    def check_size(max_size, min_size)
+      if ((@file_count <= max_size) || (max_size <= 0) || (min_size <= 0))
+        return false
+      end
+      old_count = @file_count
+      if (Options["verbose"])
+        Options["message-fh"].printf("reduce token database %s from %d to %d\n", @filename, old_count, min_size)
+      end
+      
+      key_cts.each do |(category, token)|
+        if (category != ".internal")
+          v = value(category, token) || 0
+          sub_scalar(category, token, (v * (old_count - min_size).to_f / old_count.to_f).ceil)
+          if (Options["debug"] && ! value(category, token))
+            Options["message-fh"].printf("deleted %s %s\n", category, token)
+          end
+        end
+      end
+      @file_count = min_size
+      @dirty = true
+      return true
+    end
+    
+    def value_with_degene(category, token)
+      if (value(category, token))
+        return value(category, token)
+      elsif (! Options["degeneration"])           # no degeneration
+        return nil
+      else
+        if (v = value(category, token[0 .. -2])) # cut last char
+          return v 
+        end
+        token = token.gsub(Regexp::compile("[#{Options['mark-in-token']}]"), '')
+        if (v = value(category, token))
+          return v 
+        end
+        token = token.downcase
+        if (v = value(category, token))
+          return v 
+        end
+        token = token.upcase
+        if (v = value(category, token))
+          return v 
+        end
+        token = token.capitalize
+        if (v = value(category, token))
+          return v 
+        end
+        return nil
+      end
+    end
+    def set_scalar(category, token, val)
+      @dirty = true
+      @file_count += 1
+      set(category, token, val)
+    end
+    
+    def add_scalar(category, token, val)
+      @dirty = true
+      @file_count += 1
+      if (v = value(category, token))
+        set(category, token, v + val)
+      else
+        set(category, token, val)
+      end
+    end
+    
+    def show_new_token(db)
+      db.each_ct do |(category, token)|
+        if (! value(category, token) || (value(category, token) == 0))
+          Options["message-fh"].printf("new %s %s\n", category, token)
+        end
+      end
+    end
+    
+    def values
+      array = Array::new
+      each_ct do |c, t|
+        array.push(value(c, t))
+      end
+      return array
+    end
+    
+    def key_cts
+      array = Array::new
+      each_ct do |c, t|
+        array.push([c, t])
+      end
+      return array
+    end
+    
+    def export(fh)
+      each_ct do |(category, token)|
+        fh.printf("%s %s %s %g\n", @language, category, token, value(category, token)) if (value(category, token))
+      end
+    end
+  end
+  
+  class TokenDB
+    include TokenAccess
+    
+    def initialize(language=nil)
+      @hash = DBHash::new
+      @file_count = 0
+      @language = language
+      @message_id = "-"
+      @probability = nil
+      @spam_flag = nil
+      @dirty = false
+    end
+    attr_accessor :hash, :file_count, :probability, :language, :spam_flag, :message_id
+    
+    def size
+      @hash.size
+    end
+    
+    def each_ct
+      @hash.each_key do |category|
+        @hash[category].each_key do |token|
+          yield(category, token)
+        end
+      end
+    end
+    
+    def value(category, token)
+      if (! @hash[category])
+        return nil
+      elsif (v = @hash[category][token])
+        return v
+      else
+        return nil
+      end
+    end
+    
+    def set(category, token, v)
+      @dirty = true
+      @hash[category] = DBHash::new if (! @hash[category])
+      @hash[category][token] = v
+    end
+    
+    def print_keys_to_str(hash, separator, fh=STDOUT)
+      hash.keys.sort.each do |k|
+        v = hash[k]
+        v = v.to_i
+        fh.print separator
+        fh.print(([k] * v).join(separator))
+      end
+    end
+    
+    def clear
+      @dirty = true
+      @file_count = 0
+      @hash = DBHash::new
+    end
+    
+    def add_db(db)
+      @dirty = true
+      @file_count += db.file_count
+      @hash.add(db.hash)
+    end
+    
+    def add_hash(hash)
+      @dirty = true
+      @file_count += 1
+      @hash.add(hash)
+    end
+    
+    def sub_scalar(category, token, val)
+      if (@file_count > 0)
+        @file_count -= 1
+      end
+      @hash.sub({category => {token => val}})
+    end
+    
+    def sub_hash(hash)
+      @dirty = true
+      if (@file_count > 0)
+        @file_count -= 1
+      end
+      @hash.sub(hash)
+    end
+    
+    def sub_db(db)
+      @dirty = true
+      @file_count -= db.file_count
+      if (@file_count < 1)
+        @file_count = 1
+      end
+      @hash.sub(db.hash)
+    end
+  end
+  
+  class TokenDBM
+    include TokenAccess
+    MAGIC = "###"
+    def initialize(language, ext)
+      @dbm = nil                  # SDBM not Hash
+      @dirty = nil                # not used. for TokenAccess
+      @lockfh = nil
+      @file_count = nil
+      @language = language
+    end
+    attr_accessor :file_count
+    
+    def size
+      @dbm.size
+    end
+    
+    def to_db
+      token_db = TokenDB::new(@language)
+      @dbm.each do |ct, v|
+        (category, token) = ct.split(Regexp.new(MAGIC), 2)
+        token_db.set(category, token, v)
+        token_db.file_count = @file_count
+      end
+      return token_db
+    end
+    
+    def clear
+      @dbm.clear
+      @file_count = 0
+      set(".internal", "file_count", 0)
+    end
+    
+    def each_ct
+      @dbm.each_key do |ct|
+        (category, token) = ct.split(Regexp.new(MAGIC), 2)
+        yield(category, token)
+      end
+    end
+    
+    def add_db(token_db)
+      add_hash(token_db.hash)
+      @file_count += + token_db.file_count
+    end
+    
+    def add_hash(hash)
+      @dirty = true
+      hash.flatten(MAGIC) do |k, v|
+        if (@dbm[k])
+          @dbm[k] = (@dbm[k].to_f + v.to_f).to_s
+        else
+          @dbm[k] = v.to_s
+        end
+      end
+    end
+    
+    def sub_db(token_db)
+      sub_hash(token_db.hash)
+      if (@file_count > token_db.file_count)
+        @file_count -= token_db.file_count
+      else
+        @file_count= 0
+      end
+    end
+    def sub_hash(hash)
+      @dirty = true
+      hash.flatten(MAGIC) do |k, v|
+        if (@dbm[k])
+          if (@dbm[k].to_f > v.to_f)
+            @dbm[k] = (@dbm[k].to_f - v.to_f).to_s
+          else
+            @dbm.delete(k)
+          end
+        end
+      end
+    end
+    
+    def value(category, token)
+      v = @dbm[category + MAGIC + token]
+      if (v)
+        return v.to_f
+      else
+        return nil
+      end
+    end
+    
+    def set(category, token, v)
+      @dirty = true
+      @dbm[category + MAGIC + token] = v.to_s
+    end
+    
+    def sub_scalar(category, token, v)
+      @dirty = true
+      if (@file_count > 0)
+        @file_count -= 1
+      end
+      oldv = value(category, token)
+      if (oldv)
+        if (oldv > v)
+          set(category, token, oldv - v)
+        else
+          @dbm.delete(category + MAGIC + token)
+        end
+      end
+    end
+    
+    def open(mode="r")
+      @lockfh = File::open(@lockfile, "w+")
+      case mode
+      when "r"
+        @lockfh.flock(File::LOCK_SH)
+      when "w", "wr", "rw"
+        @lockfh.flock(File::LOCK_EX)
+      else
+        raise
+      end
+      
+      @dbm = open_dbm(@filename, 0600)
+      
+      if (v = value(".internal", "file_count"))
+        @file_count = v.to_i
+      else
+        @file_count = 0
+        set(".internal", "file_count", @file_count)
+      end
+      if (Options["verbose"])
+        Options["message-fh"].printf("open %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
+      end
+      @dirty = false
+    end
+    
+    def close
+      dirty = @dirty
+      set(".internal", "file_count", @file_count) if (dirty)
+      if (Options["verbose"])
+        Options["message-fh"].printf("close %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
+      end
+      if (Options["debug"] && dirty)
+        key_cts.sort.each do |(c, t)|
+          Options["message-fh"].printf("%s %s %s %f\n", @filename, c, t, value(c, t))
+        end
+      end
+      @dbm.close
+      
+      @lockfh.flock(File::LOCK_UN)
+      @lockfh.close
+      begin
+        File::unlink(@lockfile)
+      rescue
+      end
+      @dirty = false
+    end
+  end
+  
+  class TokenSDBM < TokenDBM
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + SDBM_ext
+      @lockfile = Options["homedir"] + language + ext + SDBM_ext + Lock_ext
+      super
+    end
+    def clear
+      @file_count = 0
+      @dbm.close
+      begin
+        File::unlink(@filename + ".dir")
+        File::unlink(@filename + ".pag")
+      rescue
+      end
+      @dbm = open_dbm(@filename, 0600)
+      if (Options["verbose"])
+        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      end
+    end
+    def open_dbm(filename, mode)
+      SDBM::open(filename, mode)
+    end
+  end
+  
+  class TokenGDBM < TokenDBM
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + GDBM_ext
+      @lockfile = Options["homedir"] + language + ext + GDBM_ext + Lock_ext
+      super
+    end
+    def clear
+      @file_count = 0
+      @dbm.close
+      begin
+        File::unlink(@filename)
+      rescue
+      end
+      @dbm = open_dbm(@filename, 0600)
+      if (Options["verbose"])
+        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      end
+    end
+    def open_dbm(filename, mode)
+      GDBM::open(filename, mode, GDBM::NOLOCK)
+    end
+  end
+  
+  class TokenBDB1 < TokenDBM
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + BDB1_ext
+      @lockfile = Options["homedir"] + language + ext + BDB1_ext + Lock_ext
+      super
+    end
+    def clear
+      @file_count = 0
+      @dbm.close
+      begin
+        File::unlink(@filename)
+      rescue
+      end
+      @dbm = open_dbm(@filename, 0600)
+      if (Options["verbose"])
+        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      end
+    end
+    def open_dbm(filename, mode)
+      BDB1::Hash.open(filename, BDB1::CREATE | BDB1::WRITE, mode)
+    end
+  end
+  
+  class TokenMarshal < TokenDB
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + Marshal_ext
+      @closed = true
+      @mode = nil
+      @lockfile = Options["homedir"] + language + ext + Marshal_ext + Lock_ext
+      @lockfh = nil
+      super(language)
+    end
+    
+    attr_accessor :filename, :mode
+    def closed?
+      @closed
+    end
+    
+    def open(mode="r")
+      @lockfh = File::open(@lockfile, "w+")
+      case mode
+      when "r"
+        @lockfh.flock(File::LOCK_SH)
+      when "w", "wr", "rw"
+        @lockfh.flock(File::LOCK_EX)
+      else
+        raise
+      end
+      
+      if (closed?)
+        @closed = false      
+      else
+        raise sprintf("already opened mode %s file %s", mode, @filename)
+      end
+      if (FileTest::file?(@filename) && (mode =~ /r/))
+        File::open(@filename) {|fh|
+          fh.flock(File::LOCK_SH)
+          (@hash, @file_count) = Marshal::load(fh)
+        }
+        if (Options["verbose"])
+          Options["message-fh"].printf("open %s %d tokens %d mails by %d.\n", @filename, key_cts.length, @file_count, Process::pid)
+        end
+      else
+        clear
+      end
+    end
+    
+    def close
+      if (closed?)
+        raise sprintf("already closed mode %s file %s", @mode, @filename)
+      end
+      if (@dirty)
+        @dirty = false
+        if (Options["verbose"])
+          Options["message-fh"].printf("close %s %d tokens %d mails by %d.\n", @filename, key_cts.length, @file_count, Process::pid)
+        end
+        if (Options["debug"])
+          pairs = key_cts.sort {|a, b| ((a[0] <=> b[0]) == 0) ? (a[1] <=> b[1]) :  (a[0] <=> b[0])}
+          pairs.each do |(category, token)|
+            Options["message-fh"].printf("%s %s %s %f\n", @filename, category, token, value(category, token))
+          end
+        end
+        File::open(@filename, File::WRONLY|File::CREAT|File::TRUNC, 0600) {|fh|
+          fh.flock(File::LOCK_EX)
+          Marshal::dump([@hash, @file_count], fh)
+        }
+      end
+      @closed = true
+      @lockfh.flock(File::LOCK_UN)
+      @lockfh.close
+      begin
+        File::unlink(@lockfile)
+      rescue
+      end
+    end
+    def clear
+      if (Options["verbose"])
+        Options["message-fh"].printf("clear %s\n", @filename)
+      end
+      super
+    end
+  end
+  
+  def get_lang(buf)
+    reg_euc = Regexp::compile("[\xa4\xa1-\xa4\xaf\xa1\xa3]", nil, 'e') # hiragana in euc-jp
+    reg_sjis = Regexp::compile("[\x82\x9f-\x82\xaa\x81\x42]", nil, 's') # hiragana in shift-jis
+    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
+    
+    reg_mime = Regexp::compile('(^\w+: .*|charset="?)(utf-8|iso-2022-jp|x.sjis|shift.jis|euc.jp)', Regexp::IGNORECASE, 'n')
+    reg_c = Regexp::compile('(^\w+: .*|charset="?)(ks_c_5601|euc-kr|big5|gb2312)', Regexp::IGNORECASE, 'n')
+    found_reg_euc = false
+    found_reg_sjis = false
+    buf.each do |str|
+      case str
+      when reg_euc
+        found_reg_euc = true
+      when reg_sjis
+        found_reg_sjis = true
+      when reg_mime
+        Options["message-fh"].printf("lang ja mime\n") if (Options["debug"])
+        return "ja"
+      when reg_c
+        Options["message-fh"].printf("lang C reg\n") if (Options["debug"])
+        return "C"
+      when reg_jis
+        Options["message-fh"].printf("lang ja jis\n") if (Options["debug"])
+        return "ja"
+      end
+    end
+    if (found_reg_euc && (! found_reg_sjis))
+      Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
+      return "ja"
+    elsif ((! found_reg_euc) && found_reg_sjis)
+      Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
+      return "ja"
+    end
+    Options["message-fh"].printf("lang C last\n") if (Options["debug"])
+    return "C"
+  end
+  
+  def get_headers(buf)
+    headers = DBHash::new
+    buf = buf.dup
+    
+    if ((buf[0] !~ /\Afrom\s+(\S+)/i) && # this isn't mail
+        (buf[0] !~ /\A(\S+):/))
+      if (Options["max-line"] <= 0)
+        return [headers, buf]
+      else
+        return [headers, buf[0 .. Options["max-line"]]]
+      end
+    end
+    
+    while (str = buf.shift)
+      str = str.chomp
+      if (str =~ /\A(\S+?):\s*(.*)/)
+        current = $1.downcase
+        if (current == "received")
+          headers[current] = $2.sub(/[\r\n]*\z/, '')
+        else
+          headers[current] = (headers[current] || "") + " " + $2.sub(/[\r\n]*\z/, '')
+        end
+      elsif (str =~ /\Afrom\s+(\S+)/i)
+        headers["ufrom"] = $1
+      elsif (str =~ /\A\r*\z/)
+        break
+      elsif (! current)
+        break
+      else
+        if (str =~ /\A\s*=\?/)
+          headers[current] += str.sub(/[\r\n]*\z/, '').sub(/\A\s*/, '')
+        else
+          headers[current] += str.sub(/[\r\n]*\z/, '').sub(/\A\s*/, ' ')
+        end
+      end
+    end
+    if ((headers["content-type"] =~ /\bboundary=\s*"(.*?)"/i) ||
+        (headers["content-type"] =~ /\bboundary=\s*'(.*?)'/i) ||
+        (headers["content-type"] =~ /\bboundary=([^\s;]+)/i))
+      headers["boundary"] = $1
+    end
+    if (headers["content-type"] =~ /charset=([\'\"]*)([^\s\1\;]+)\1/i)
+      headers["charset"] = $2
+    end
+    if (headers["content-type"] =~ /\A([^;]+)/)
+      headers["content-type"] = $1
+    end
+    
+    if (Options["max-line"] <= 0)
+      return [headers, buf]
+    else
+      return [headers, buf[0 .. Options["max-line"]]]
+    end
+  end
+  
+  
+  class Jtokenizer
+    @@method = nil
+    @@m = nil
+    def self.set(method)
+      case method
+      when "bigram"
+        @@method = Proc::new {|s| self.bigram(s)}
+      when "block"
+        @@method = Proc::new {|s| self.block(s)}
+      when "mecab"
+        @@method = Proc::new {|s| self.mecab(s)}
+        @@m = MeCab::Tagger.new([$0, "-Ochasen"])
+      when "chasen"
+        Chasen.getopt("-F", '%H %m\n', "-j")
+        @@method = Proc::new {|s| self.chasen(s)}
+      when "kakasi"
+        @@method = Proc::new {|s| self.kakasi(s)}
+      else
+        raise
+      end
+    end
+    def self.split(str)
+      @@method.call(str)
+    end
+    
+    Reg_kanji = Regexp::compile("[\xb0\xa1-\xf4\xa4]+", nil, 'e')
+    Reg_katakana = Regexp::compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+", nil, 'e')
+    Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
+    Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
+    
+    def self.kakasi(str)
+      str = str.gsub(/[\x00-\x7f]/, ' ')
+      if (str =~ /\A +\z/)
+        return []
+      end
+      array = Array::new
+      Kakasi::kakasi("-oeuc -w", str).scan(/\S+/).each do |token|
+        token.gsub!(Reg_not_kanji_katakana, '')
+        if ((token =~ Reg_kanji) || (token.length > 2))
+          array.push(token)
+        end
+      end
+      return array
+    end
+    
+    def self.mecab(str)
+      str = str.gsub(/[\x00-\x7f]/, ' ')
+      if (str =~ /\A +\z/)
+        return []
+      end
+      array = Array::new
+      node = @@m.parseToNode(str)
+      while (node.hasNode == 1)
+        token = node.getSurface
+        hinshi = node.getFeature.split(/,/)[0]
+        ##      print token, hinshi, "\n"
+        if (hinshi == "\xcc\xbe\xbb\xec")
+          if ((token =~ Reg_kanji_katakana) || (token.length > 2))
+            array.push(token)
+          end
+        else
+          token.gsub!(Reg_not_kanji_katakana, '')
+          if ((token =~ Reg_kanji) || (token.length > 2))
+            array.push(token)
+          end
+        end
+        node = node.next
+      end
+      return array
+    end
+    
+    def self.chasen(str)
+      str = str.gsub(/[\x00-\x7f]/, ' ')
+      if (str =~ /\A +\z/)
+        return []
+      end
+      array = Array::new
+      Chasen.sparse(str).split("\n").each do |hinshi_token|
+        if (hinshi_token =~ /(.*) (.*)/)
+          hinshi = $1
+          token = $2
+          if (hinshi == "\xcc\xbe\xbb\xec")
+            if ((token =~ Reg_kanji_katakana) || (token.length > 2))
+              array.push(token)
+            end
+          else
+            token.gsub!(Reg_not_kanji_katakana, '')
+            if ((token =~ Reg_kanji) || (token.length > 2))
+              array.push(token)
+            end
+          end
+        end
+      end
+      return array
+    end
+    
+    def self.block(str)
+      tokens = str.scan(Reg_kanji)
+      tokens.concat(str.scan(Reg_katakana))
+      return tokens
+    end
+    
+    def self.bigram(str)
+      tokens = Array::new
+      
+      str.scan(Reg_kanji).each do |token|
+        case token.length
+        when 2, 4
+          tokens.push(token)
+        else
+          l = token.length / 2 - 2
+          for i in (0 .. l)
+            tokens.push(token[i * 2, 4])
+          end
+        end
+      end
+      tokens.concat(str.scan(Reg_katakana))
+      return tokens
+    end
+  end
+  
+  def tokenize_headers(lang, headers)
+    head_db = TokenDB::new(lang)
+    reg_token = Regexp::compile("\\b\\d[\\d\\.]+\\d\\b|[\\w#{Options['mark-in-token']}]+")
+    
+    if (headers["received"])
+      str = headers["received"] 
+      str =~ /envelope\-from\s+([\w@\.\-]+)/
+      efrom = $1
+      str =~ /for\s+<([\w@\.\-]+)>/
+      foraddress = $1
+      str.sub!(/(\bid|;).*/im, '')
+      str.sub!(/\(qmail[^\)]*\)/, '')
+      str += " " + efrom if efrom
+      str += " " + foraddress if foraddress
+      headers["received"] = str
+    end
+    headers.each do |header, content|
+      case header
+      when "ufrom", "from", "to", "cc", "subject", "reply-to", "return-path",
+           "content-transfer-encoding", "content-type", "content-disposition", "charset", "received"
+        if (lang == "ja")
+          content.gsub!(/=\?utf\-8\?([bq])\?(\S*)\?=/i) do |s|
+            b_or_q = $1
+            encoded_str = $2
+            if (Options["utf-8"])
+              if (b_or_q =~ /q/i)
+                decoded_str = encoded_str.unpack("M*").to_s 
+              else
+                decoded_str = encoded_str.unpack("m*").to_s 
+              end
+              Iconv.u2eucjp(decoded_str)
+            else
+              ""
+            end
+          end
+          content = NKF::nkf('-e -X -Z0', content)
+        else
+          content = latin2ascii(content)
+        end
+        content.scan(reg_token).each do |token|
+          head_db.add_scalar(header, token, 1) if (token.length < 20)
+          Options["message-fh"].printf("tokenizer %s %s\n", header, token) if (Options["debug"])
+        end
+        if (lang == "ja")
+          Jtokenizer::split(content.gsub(/\s+/, '')).each do |token|
+            head_db.add_scalar(header, token, 1)
+            Options["message-fh"].printf("tokenizer %s %s\n", header, token) if (Options["debug"])
+          end
+        end
+      end
+    end
+    return head_db
+  end
+  
+  def tokenize_buf(buf)
+    lang = get_lang(buf)
+    
+    separators = Array::new
+    delimiters = Array::new
+    (headers, buf) = get_headers(buf)
+    if (headers.empty?)           # this is not a mail
+      (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
+      return db
+    end
+    
+    body_db = TokenDB::new(lang)
+    body_db.message_id = headers["message-id"] || "-"
+    
+    sub_head_db = TokenDB::new(lang)
+    main_head_db = tokenize_headers(lang, headers) if (Options["use-header"])
+    
+    found_html_part = false
+    plain_bodies = Array::new
+    html_bodies = Array::new
+    
+    while (! buf.empty?)
+      separators.push("--" + headers["boundary"]) if (headers["boundary"])
+      delimiters.push("--" + headers["boundary"] + "--") if (headers["boundary"])
+      
+      if ((! headers["content-type"]) ||
+          (headers["content-type"] !~ /rfc822/i))
+        (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
+        if (headers["content-type"] =~ /html/i)
+          found_html_part = true
+          html_bodies.push(db)
+        else
+          plain_bodies.push(db)
+        end
+      end
+      (headers, buf) = get_headers(buf)    
+      db = tokenize_headers(lang, headers) if (Options["use-header"])
+      sub_head_db.add_db(db)
+    end
+    
+    if (Options["ignore-plain-text-part"] && found_html_part)
+      html_bodies.each do |db|
+        body_db.add_db(db)
+      end
+    else                          # default
+      html_bodies.each do |db|
+        body_db.add_db(db)
+      end
+      plain_bodies.each do |db|
+        body_db.add_db(db)
+      end
+    end
+    
+    body_db.add_db(main_head_db) if (Options["use-header"])
+    body_db.add_db(sub_head_db) if (Options["use-header"])
+    body_db.file_count = 1
+    return body_db
+  end
+  
+  def i2eucjp(i)
+    Iconv.u2eucjp([i].pack("U"))
+  end
+  
+  def i2ascii(i)
+    latin2ascii(Iconv.u2latin([i].pack("U")))
+  end
+  
+  def decode_character_reference(str, lang)
+    if (Options["utf-8"])
+      str.gsub!(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
+        hex_or_dec = $1
+        if (hex_or_dec =~ /^x(.*)/i)
+          hex_str = $1
+          if (lang == "ja")
+            i2eucjp(hex_str.hex)
+          else
+            i2ascii(hex_str.hex)
+          end
+        else
+          if (lang == "ja")
+            i2eucjp(hex_or_dec.to_i)
+          else
+            i2ascii(hex_or_dec.to_i)
+          end
+        end
+      end
+    else
+      str.gsub!(/\&\#(\d{1,5}|x[\da-f]{1,4});/i, "")
+    end
+    return str
+  end
+  
+  def tokenize_str(str, lang)
+    body_hash = DBHash::new(0)
+    url_hash = DBHash::new(0)
+    
+    reg_token = Regexp::compile("(?:http:|www)[\\w\\-\\.\\/@%:\?=]+|[\\w\\-\\.]+@[\\w\\-\\.]+|\\b\\d[\\d\\.]+\\d\\b|[\\w#{Options['mark-in-token']}]+")
+    reg_url = Regexp::compile('(^http:|https:|^www|@)')
+    reg_token2 = Regexp::compile('\b\d[\d\.]+\d\b|[\w%]+')
+    reg_noret = Regexp::compile('[\r\n]*\z')
+    
+    str.scan(reg_token).each do |token|
+      if (token =~ reg_url)
+        token.scan(reg_token2).each do |token2|
+          if (token2.length < 20)
+            url_hash[token2] += 1 
+            Options["message-fh"].printf("tokenizer %s %s\n", "url", token2) if (Options["debug"])
+          end
+        end
+      elsif (token.length < 20)
+        body_hash[token] += 1 
+        Options["message-fh"].printf("tokenizer %s %s\n", "body", token) if (Options["debug"])
+      end
+    end
+    
+    if (lang == "ja")
+      str.gsub!(Regexp::compile("^[ -\\~]*[\|\>]+", nil, 'e'), '') # delete cite mark
+      str.gsub!(Regexp::compile("^[ \\t\xa1\xa1]+", nil, 'e'), '') # delete white space
+      str.gsub!(Regexp::compile("(\\r?\\n){2,}", nil, 'e'), ' ') # keep multiple newline as space
+      str.gsub!(Regexp::compile("[\\r\\n]+", nil, 'e'), '') # delete newline
+      str.split.each do |s|
+        Jtokenizer::split(s).each do |token|
+          body_hash[token] += 1
+          Options["message-fh"].printf("tokenizer %s %s\n", "body", token) if (Options["debug"])
+        end
+      end
+    end
+    return [body_hash, url_hash]
+  end
+  
+  def tokenize_body(lang, headers, body, separators, delimiters)
+    reg_return_codes = Regexp::compile('[\r\n]*\z')
+    
+    db = TokenDB::new(lang)
+    body = body.dup
+    
+    buf = Array::new
+    
+    delimiter = delimiters.last
+    separator = separators.last
+    
+    if (separators.empty?)
+      buf = body
+      body = Array::new
+    else
+      while (str = body.shift)
+        str_noret = str.sub(reg_return_codes, '')
+        case str_noret
+        when separator
+          break
+        when delimiter
+          delimiters.pop
+          separators.pop
+          delimiter = delimiters.last
+          separator = separators.last
+        else
+          buf.push(str)
+        end
+      end
+    end
+    
+    if (headers["content-type"] && headers["content-type"] !~ /text/i)
+      return [db, body]           # skip non-text body
+    end
+    
+    case headers["content-transfer-encoding"]
+    when /bit/i
+      ##
+    when /base64/i
+      buf.map! {|str| str.unpack("m*").to_s}
+    when /quoted-printable/i
+      buf.map! {|str| str.unpack("M*").to_s}
+    end
+    str = buf.join
+    
+    if (lang == "ja")
+      if (str =~ RE_UTF8)
+        if (Options["utf-8"])
+          str = Iconv.u2eucjp(str)
+        else
+          lang = "C"              # can't use iconv / stop ja tokenizer
+        end
+      else
+        str = NKF::nkf('-e -X -Z0', str)
+      end
+    else
+      str = latin2ascii(str)
+    end
+    
+    tags = Array::new
+    if (headers["content-type"] =~ /html/i)
+      # remove salad at head of part
+      if (str =~ Regexp::compile('\A[^<>]*?(<(\?xml|!doctype|html|body)\b.*)\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n'))
+        str = $1
+      end
+      
+      # remove salad in head, except style
+      if (str =~ /\A(.*?)(<body.*)\z/im)
+        before_body_tag = $1
+        after_body_tag = $2
+        before_body_tag.gsub!(/>[^<>]*<(?!\/style)/im, '><')
+        str = before_body_tag + after_body_tag
+      end
+      
+      # remove <p style="font-size:0px..>
+      str.gsub!(/(<p[^<>]*font-size\s*:\s*[01]\s*(;|px)[^<>]*>)([^<>]*)(<\/p>)/im, '')
+      str.gsub!(/(<font[^<>]*font-size\s*:\s*[01]\s*(;|px)[^<>]*>)([^<>]*)(<\/font>)/im, '')
+      
+      if (Options["ignore-after-last-atag"])
+        if (str =~ /\A(.*)<\/a>/im)
+          str = $1
+        end
+      end
+      
+      
+      # remove salad after body or html
+      if (str =~ Regexp::compile('\A(.*)</(body|html)>[^<>]*?\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n')) 
+        str = $1
+      end
+      str.gsub!(Regexp::compile('<[^>]*>', Regexp::MULTILINE, 'n')) do |t|
+        t = t.gsub(/\n/, '')
+        if (t =~ RE_ALL_TAGS)     # end tags are thrown away
+          tags.push(t)
+        end
+        
+        if (t =~ RE_SPACE_TAGS)
+          " "
+        else
+          ""
+        end
+      end
+      body_str = decode_character_reference(str, lang) # out of tags
+      tag_str = decode_character_reference(tags.join, lang) # in tags
+    else                          # if plain text
+      body_str = str
+      tag_str = ""
+    end
+    (body_hash, url_body_hash) = tokenize_str(body_str, lang)
+    (tag_hash, url_tag_hash) = tokenize_str(tag_str, lang)
+    
+    if (! body_hash.empty? && Options["use-body"])
+      db.add_hash({"body" => body_hash})
+    end
+    if (! tag_hash.empty?)
+      db.add_hash({"tag" => tag_hash})
+    end
+    if (! url_body_hash.empty?)
+      db.add_hash({"url" => url_body_hash})
+    end
+    if (! url_tag_hash.empty?)
+      db.add_hash({"url" => url_tag_hash})
+    end
+    db.file_count = 1
+    return [db, body]
+  end
+  
+  class Probability               # for each lang
+    def initialize(lang)
+      @filename = Options["homedir"] + lang + Prob_ext
+      case (Options["db"])
+      when "marshal"
+        @clean = TokenMarshal::new(lang, Clean_ext)
+        @spam = TokenMarshal::new(lang, Spam_ext)
+        @prob = TokenMarshal::new(lang, Prob_ext)
+      when "sdbm"
+        @clean = TokenSDBM::new(lang, Clean_ext)
+        @spam = TokenSDBM::new(lang, Spam_ext)
+        @prob = TokenSDBM::new(lang, Prob_ext)
+      when "gdbm"
+        @clean = TokenGDBM::new(lang, Clean_ext)
+        @spam = TokenGDBM::new(lang, Spam_ext)
+        @prob = TokenGDBM::new(lang, Prob_ext)
+      when "bdb1"
+        @clean = TokenBDB1::new(lang, Clean_ext)
+        @spam = TokenBDB1::new(lang, Spam_ext)
+        @prob = TokenBDB1::new(lang, Prob_ext)
+      end
+      
+      @language = lang
+    end
+    
+    attr_accessor :prob, :clean, :spam, :spam_cutoff, :language
+    
+    def merge_dbs_of_lang(token_dbs)
+      new_db = TokenDB::new
+      token_dbs.each do |db|
+        if (@language == db.language)
+          new_db.add_db(db)
+        end
+      end
+      return new_db
+    end
+  end
+  
+  class Graham < Probability
+    def initialize(lang)
+      @spam_cutoff = 0.9
+      @default_probability = 0.4
+      super
+    end
+
+    def product(a)
+      n = 1
+      a.each do |v|
+        n = n * v if (v != 0)
+      end
+      return n
+    end
+
+    def get_combined_probability(token_db)
+      prob_db = TokenDB::new      # temporary
+      
+      token_db.each_ct do |(category, token)|
+        probability = @prob.value_with_degene(category, token)
+        if (probability)
+          prob_db.set_scalar(category, token, probability)
+        else
+          prob_db.set_scalar(category, token, @default_probability) # 0.4
+        end
+      end
+      
+      probs = prob_db.values.sort {|a, b| (b - 0.5).abs <=> (a - 0.5).abs}[0, 15]
+      
+      if (Options["verbose"])
+        prob_array = Array::new
+        prob_db.each_ct do |c, t|
+          prob_array.push([[c, t], prob_db.value(c, t)])
+        end
+        prob_array.sort! {|a, b| (b[1] - 0.5).abs <=> (a[1] - 0.5).abs}
+        prob_array = prob_array[0, 15]
+        prob_array.sort! {|a, b| b[1] <=> a[1]}
+        prob_array.each do |k, v|
+          Options["message-fh"].printf("word probability %s %s %f\n", k[0], k[1], v)
+        end
+      end
+      
+      prod = product(probs)
+      token_db.probability = prod / (prod + product(probs.map {|x| 1 - x}))
+      if (token_db.probability > @spam_cutoff)
+        token_db.spam_flag = true
+      else
+        token_db.spam_flag = false
+      end
+      return token_db
+    end
+    
+    def update_probability(token_dbs)
+      c_count = [@clean.file_count, 1].max
+      s_count = [@spam.file_count, 1].max
+      
+      if (token_dbs.empty?)
+        incremental = false
+        target_cts = @clean.key_cts | @spam.key_cts
+        @prob.open("w")
+        @prob.clear
+      else
+        incremental = true
+        merged_db = merge_dbs_of_lang(token_dbs)
+        target_cts = merged_db.key_cts
+        return if (target_cts.empty?)
+        @prob.open("rw")
+      end
+      old_file_count = @prob.file_count
+      new_file_count = 0
+      
+      cnum = c_count.to_f
+      snum = s_count.to_f
+      
+      target_cts.each do |(category, token)|
+        c_count = @clean.value(category, token) || 0
+        s_count = @spam.value(category, token) || 0
+        update = false
+        if (incremental && @prob.value(category, token))
+          @prob.sub_scalar(category, token, 1.0) # 1.0 is big enough for delete
+          new_file_count -= 1
+        end
+        if (c_count == 0)
+          if (s_count > 10)
+            new_file_count += 1
+            @prob.set_scalar(category, token, 0.9999)
+          elsif (s_count > 5)
+            new_file_count += 1
+            @prob.set_scalar(category, token, 0.9998)
+          end
+        elsif (s_count == 0)
+          if (c_count > 10)
+            new_file_count += 1
+            @prob.set_scalar(category, token, 0.0001)
+          elsif (c_count > 5)
+            new_file_count += 1
+            @prob.set_scalar(category, token, 0.0002)
+          end
+        elsif (c_count + s_count > 5)
+          c = c_count * 2
+          s = s_count
+          p = [[[s / snum, 1.0].min / ([c / cnum, 1.0].min + [s / snum, 1.0].min),
+                0.9999].min,
+               0.0001].max
+          new_file_count += 1
+          @prob.set_scalar(category, token, p)
+        end
+      end
+      @prob.file_count = new_file_count + old_file_count if (incremental)
+      @prob.close
+    end
+  end
+  
+  class Robinson < Probability
+    def initialize(lang)
+      @robx_max = 1
+      @min_dev = 0.1
+      @spam_cutoff = 0.582
+      @center = 0.5
+      @robs = 0.001               # from bogofilter/robinson.h
+      @default_robx = 0.415	# from bogofilter/robinson.h / not used
+      super
+    end
+    
+    def get_pw(category, token, g, b)
+      return pw
+    end
+    
+    
+    def update_probability(token_dbs)
+      pwdb = TokenDB::new
+      c_count = [@clean.file_count, 1].max
+      s_count = [@spam.file_count, 1].max
+      
+      if (token_dbs.empty?)
+        incremental = false
+        target_cts = @clean.key_cts | @spam.key_cts
+      else
+        incremental = true
+        merged_db = merge_dbs_of_lang(token_dbs)
+        target_cts = merged_db.key_cts
+        return if (target_cts.empty?)      
+      end
+      
+      ## loop1
+      ## get pw and robx(average of pw)
+      count = 0
+      pw_sum = 0.0
+      
+      good_mail = [1, @clean.file_count].max.to_f
+      bad_mail = [1, @spam.file_count].max.to_f
+      target_cts.each do |(category, token)|
+        g = [@clean.value(category, token) || 0, c_count].min
+        b = [@spam.value(category, token) || 0, s_count].min
+        n = g + b
+        if (n == 0)
+          pwdb.set_scalar(category, token, nil) # need to delete this token from prob.db
+        else
+          pw = (b / bad_mail) / (b / bad_mail + g / good_mail)
+          if ((@robx_max == 0) || (n <= @robx_max))
+            pw_sum += pw
+            count += 1
+          end
+          pwdb.set_scalar(category, token, pw)
+        end
+      end
+      
+      if (incremental)
+        @prob.open("rw")
+        old_file_count = @prob.file_count
+        old_robx = @prob.value(".internal", "robx") || @default_robx
+        robx = (pw_sum + old_file_count * old_robx) / (count + old_file_count)
+        robs = @robs
+      else
+        @prob.open("w")
+        @prob.clear
+        if (count != 0)
+          robx = pw_sum / count
+        else
+          robx = @default_robx
+        end
+        robs = @robs
+      end
+      ## loop2
+      ## get fw from pw
+      new_file_count = 0
+      pwdb.key_cts.each do |(category, token)|
+        g = [@clean.value(category, token) || 0, c_count].min
+        b = [@spam.value(category, token) || 0, s_count].min
+        n = g + b
+        pw = pwdb.value(category, token)
+        if (incremental && @prob.value(category, token))
+          new_file_count -= 1
+          @prob.sub_scalar(category, token, 1.0) # 1.0 is big enough for delete        
+        end
+        if (pw)
+          new_file_count += 1
+          @prob.set_scalar(category, token, (robs * robx + n * pw) / (robs + n)) # fw
+        end
+      end
+      @prob.set_scalar(".internal", "robx", robx)
+      @prob.file_count = new_file_count + old_file_count if (incremental)
+      @prob.close
+    end
+    
+    def get_probability(pminus, qminus, count)
+      r = 1.0 / [1, count].max
+      p = 1.0 - Math::exp(pminus.ln * r)
+      q = 1.0 - Math::exp(qminus.ln * r)
+      s = (1.0 + (p - q) / (p + q)) / 2.0
+      return s
+    end
+    
+    def get_combined_probability(token_db)
+      robx = @prob.value(".internal", "robx") || @default_robx
+      
+      count = 0
+      pminus = FLOAT::new(1)
+      qminus = FLOAT::new(1)
+      token_db.each_ct do |(category, token)|
+        probability = @prob.value_with_degene(category, token) || robx
+        if ((probability - @center).abs > @min_dev)
+          if (probability <= 0.0)
+            probability = 0.0000001
+          elsif (probability >= 1.0)
+            probability = 0.9999999
+          end
+          c = token_db.value(category, token)
+          count += c
+          pminus = pminus * FLOAT::new(1.0 - probability, c)
+          qminus = qminus * FLOAT::new(probability, c)
+          Options["message-fh"].printf("word probability %s %s %d %f\n", category, token, c, probability) if (Options["debug"])
+        end
+      end
+      
+      if (count == 0)
+        token_db.probability = 0.0
+      else
+        token_db.probability = get_probability(pminus, qminus, count)
+      end
+      if (token_db.probability > @spam_cutoff)
+        token_db.spam_flag = true
+      else
+        token_db.spam_flag = false
+      end
+      return token_db
+    end
+  end
+  
+  
+  class RobinsonFisher < Robinson
+    def initialize(lang)
+      super
+      @spam_cutoff = 0.95
+    end
+    
+    def chi2q(x2, v)
+      m = x2 / 2.0
+      sum = Math::exp(0.0 - m)
+      term = FLOAT::new
+      term.exp = 0.0 - m
+      term.mant = 1
+      
+      (1 .. (v / 2) - 1).each do |i|
+        term = term * FLOAT::new(m / i)
+        sum += term.to_f
+      end
+      return sum < 1.0 ? sum : 1.0
+    end
+    
+    def get_probability(pminus, qminus, count)
+      p = 1 - chi2q(-2.0 * pminus.ln, 2 * count)
+      q = 1 - chi2q(-2.0 * qminus.ln, 2 * count)
+      s = (1.0 + p - q) / 2.0
+      return s
+    end
+  end
+  
+  def init_dir(dir)
+    if (! FileTest::directory?(dir))
+      Dir.mkdir(dir, 0700)
+    end
+  end
+  
+  def usage
+    
+    print <<EOM
+
+NAME
+	bsfilter - bayesian spam filter
+
+SYNOPSIS
+	bsfilter [options] [commands] < MAIL
+	bsfilter [options] [commands] MAIL ...
+
+DESCRIPTION
+	filter spam.
+        If commands are specified, bsfilter is in maintenance mode, otherwise it is in filtering mode.
+        If bsfilter does not find spam in filtering mode, exit status is 1.
+        If bsfilter runs with --pipe option or finds spam, exit staus is 0.
+
+COMMANDS
+	--add-clean|-c
+		add mails into the clean token database
+
+	--add-spam|-s
+		add mails into the spam token database
+
+	--sub-clean|-C
+		subtract mails from the clean token database
+
+	--sub-spam|-S
+		subtract mails from the spam token database
+
+	--update|-u
+		update the probability table from clean and spam token databases
+
+	--export-clean
+		export the clean token database
+
+	--export-spam
+		export the spam token database
+
+	--import-clean
+		import the clean token database
+
+	--import-spam
+		import the spam token database
+
+	--export-probability
+		export the probability database (for debugging purpose)
+OPTIONS
+        --homedir directory
+		specify the name of the bsfilter\'s home directory
+		If this option is not used, a directory specified with the environment variable "BSFILTERHOME" is used
+		If the variable "BSFILTERHOME" is not defined, ".bsfilter" directory under your home is used
+		If the variable "HOME" is not defined, a directory which bsfilter is located at is used
+
+	--config-file file
+		specify the name of the bsfilter\'s configuration file
+		"bsfilter.conf" in bsfilter\'s home directory is used by default
+
+        --max-line number
+		check and/or study the first number of lines
+		default is #{Default_max_line}. 0 means all
+
+	--db sdbm|gdbm|bdb1|marshal
+		specify the name of database type
+		"sdbm" by default
+
+        --jtokenizer|-j bigram|block|mecab|chasen|kakasi
+		specify algorithm of a tokenizer for Japanese language
+		"bigram" by default
+
+	--list-clean
+		print filename of clean mail
+
+	--list-spam
+		print filename of spam
+
+	--imap
+		access IMAP server
+
+	--imap-server hostname
+		specify hostname of IMAP server
+
+	--imap-port number
+		specify port number of IMAP server. default is #{Default_imap_port}
+
+	--imap-auth method
+		specify authorization method. default is "auto"
+		"cram-md5"	use "AUTHENTICATE CRAM-MD5" command
+		"login"		use "AUTHENTICATE LOGIN" command
+		"loginc"	use "LOGIN" command
+		"auto"		try #{Default_imap_auth_preference.join(', ')} in this order. 
+
+	--imap-user name
+		specify user name of IMAP server
+
+	--imap-password password
+		specify password of imap-user
+
+	--imap-folder-clean folder
+		specify destination folder for clean mails. "inbox.clean" for example
+
+	--imap-folder-spam folder
+		specify destination folder for spams. "inbox.spam" for example
+
+	--imap-fetch-unseen
+		filter or study mails without SEEN flag
+
+	--imap-fetch-unflagged
+		filter or study mails without "X-Spam-Flag" header
+
+	--imap-reset-seen-flag
+		reset SEEN flag when bsfilter moves or modifies mails
+
+	--pop
+		work as POP proxy
+
+	--pid-file file
+		specify filename for logging process ID of bsfilter
+		"bsfilter.pid" in bsfilter\'s home directory is used by default		
+                this function is valid when "--pop" is specified
+
+	--tasktray
+		sit in tasktray
+		this is valid with "--pop" on VisualuRuby
+
+	--pop-server hostname
+		specify hostname of POP server
+
+	--pop-port number
+		specify port number of POP server. default is #{Default_pop_port}
+
+	--pop-proxy-if address
+		specify address of interface which bsfilter listens at
+		default is 0.0.0.0 and all interfaces are active
+		
+	--pop-proxy-port number
+		specify port number which bsfilter listens at. default is #{Default_pop_proxy_port}
+
+	--pop-user name
+		optional. specify username of POP server.
+		bsfilter checks match between value of this options and a name which MUA sends.
+		in case of mismatch, bsfilter closes sockets.
+
+	--pop-proxy-set set[,set...]        
+		specify rules of pop proxy.
+		alternative way of pop-server, pop-port, pop-proxy-port and pop-user option.
+		format of "set" is "pop-server:pop-port:[proxy-interface]:proxy-port[:pop-user]"
+		If proxy-interface is specified and isn\'t 0.0.0.0 , other interfaces are not used.
+		"--pop-proxy-set 192.168.1.1:110::10110" is equivalent with
+		"--pop-server 192.168.1.1 --pop-port 110 --pop-proxy-port 10110" 		
+
+	--pop-max-size number
+		When mail is longer than the specified number, the mail is not filtered.
+		When 0 is specified, all mails are tested and filtered.
+		unit is byte. default is #{Default_pop_max_size}
+
+	--method|-m g|r|rf
+		specify filtering method. "rf" by default
+		"g" means Paul Graham method,
+		"r" means Gary Robinson method,
+		and "rf" means Robinson-Fisher method
+
+	--spam-cutoff number
+		specify spam-cutoff value
+		0.9 by default for Paul Graham method
+		0.582 by default for Gary Robinson method
+		0.95 by default for Robinson-Fisher method
+
+	--auto-update|-a
+		recognize mails, add them into clean or spam token database
+		and update the probability table
+
+        --disable-degeneration|-D
+                disable degeneration during probability table lookup
+
+        --disable-utf-8
+                disable utf-8 support
+
+	--ignore-header|-H
+		ignore headers of mails
+
+	--ignore-body|-B
+		ignore body of mails, except URL or mail address
+
+	--ignore-plain-text-part
+		ignore plain text part if html part is included in the mail
+
+	--ignore-after-last-atag
+		ignore text after last "A" tag
+
+        --mark-in-token "characters"
+		specify characters which are allowable in a token
+		"#{Default_mark_in_token}" by default
+
+	--show-process
+		show summary of execution
+
+	--show-new-token
+		show tokens which are newly added into the token database
+
+	--mbox
+		use "unix from" to divide mbox format file
+
+	--max-mail number
+		reduce token database when the number of stored mails is larger than this one
+		#{Default_max_mail} by default
+
+	--min-mail number
+		reduce token database as if this number of mails are stored
+		#{Default_min_mail} by default
+
+	--pipe
+		write a mail to stdout.
+		this options is invalid when "--imap" or "--pop" is specified
+
+	--insert-revision
+		insert "X-Spam-Revision: bsfilter release..." into a mail
+
+	--insert-flag
+		insert "X-Spam-Flag: Yes" or "X-Spam-Flag: No" into a mail
+
+	--insert-probability
+		insert "X-Spam-Probability: number" into a mail
+
+	--header-prefix string
+		insert "X-spcecified_string-..." headers, instead of "Spam"
+
+	--show-db-status
+		show numbers of tokens and mails in databases and quit
+
+        --help|-h
+		help
+
+	--quiet|-q
+		quiet mode
+
+	--verbose|-v
+		verbose mode
+
+	--debug|-d
+		debug mode
+
+EXAMPLES
+
+% bsfilter -s ~/Mail/spam/*			## add spam
+% bsfilter -u -c ~/Mail/job/* ~/Mail/private/*	## add clean mails and update probability table
+% bsfilter ~/Mail/inbox/1			## show spam probability
+
+## recipe of procmail (1)
+:0 HB
+* ? bsfilter -a
+spam/.
+
+## recipe of procmail (2)
+:0 fw
+| bsfilter -a --pipe --insert-flag --insert-probability
+
+:0
+* ^X-Spam-Flag: Yes
+spam/.
+
+LICENSE
+	this file is distributed under GPL version2 and might be compiled by Exerb with VisualuRuby
+
+SEE ALSO
+	http://bsfilter.org/
+	http://sourceforge.jp/projects/bsfilter/
+	http://exerb.sourceforge.jp/
+	http://www.osk.3web.ne.jp/~nyasu/software/vrproject.html
+	http://www.ruby-lang.org/
+
+RELEASE
+	#{Release}
+
+REVISION
+	#{Revision}
+EOM
+  end
+
+  class Mbox
+    def initialize(fh)
+      @buf = Array::new
+      @fh = fh
+    end
+    def read
+      if (! Options["mbox"])
+        if (@fh.eof?)
+          return nil
+        else
+          return @fh.readlines
+        end
+      end
+      
+      ##    reg_ufrom = Regexp::compile('^From .*@.* \d{2}:\d{2}:\d{2} ')
+      reg_ufrom = Regexp::compile('^From ')
+      while (str = @fh.gets)
+        if (str =~ reg_ufrom)
+          if (@buf.empty?)
+            @buf.push(str)
+          else
+            ret_buf = @buf
+            @buf = Array::new
+            @buf.push(str)
+            return ret_buf
+          end
+        else
+          @buf.push(str)
+        end
+      end
+      ret_buf = @buf
+      @buf = nil
+      return ret_buf
+    end
+  end
+  
+  def update_token_db_one(db, command=Options)
+    maintenance_command = ""
+    maintenance_command += "c" if (command["add-clean"])
+    maintenance_command += "s" if (command["add-spam"])
+    maintenance_command += "C" if (command["sub-clean"])
+    maintenance_command += "S" if (command["sub-spam"])
+    maintenance_command = "-" if (maintenance_command == "")
+    
+    show_process(db, maintenance_command) if (Options["show-process"])
+    
+    if (command["add-clean"] || command["import-clean"])
+      DB[db.language].clean.show_new_token(db) if (Options["show-new-token"])
+      DB[db.language].clean.add_db(db)
+    end
+    if (command["add-spam"] || command["import-spam"])
+      DB[db.language].spam.show_new_token(db) if (Options["show-new-token"])
+      DB[db.language].spam.add_db(db)
+    end
+    if (command["sub-clean"])
+      DB[db.language].clean.sub_db(db)
+    end
+    if (command["sub-spam"])
+      DB[db.language].spam.sub_db(db)
+    end
+  end
+  
+  def read_exported_text(fh)
+    dbs = DBHash::new
+    Languages.each do |lang|
+      dbs[lang] = TokenDB::new(lang)
+    end
+    while (str = fh.gets)
+      str.chomp!
+      if (str =~ /^\s*#/)
+        next
+      end
+      (lang, category, token, val) = str.split
+      val = val.to_f.to_i
+      if (category == ".internal") 
+        if (token == "file_count")
+          dbs[lang].file_count = dbs[lang].file_count + val
+        end
+      else
+        dbs[lang].add_scalar(category, token, val)
+        dbs[lang].file_count = dbs[lang].file_count - 1
+      end
+    end
+    return dbs
+  end
+  
+  def update_token_dbs(files)
+    dbs = Array::new
+    Languages.each do |lang|
+      DB[lang].clean.open("rw")
+      DB[lang].spam.open("rw")
+    end
+    
+    if (Options["imap"])
+      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+      imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+      files.each do |mailbox|
+        target_mailbox = mailbox
+        target_mailbox = Options["imap-folder-clean"] if (Options["add-clean"] && Options["imap-folder-clean"])
+        target_mailbox = Options["imap-folder-spam"] if (Options["add-spam"] && Options["imap-folder-spam"])
+        uids = imap_get_target_uids(imap, mailbox)
+        uids.each do |uid|
+          imapm = IMAPMessage::new(imap, uid)
+          imapm.fetch_rfc822
+          db = tokenize_buf(imapm.buf)
+          update_token_db_one(db)
+          updated = imapm.insert_rfc822_headers!((Options["add-spam"] || Options["sub-clean"]), nil)
+          if (updated)
+            imapm.append(target_mailbox)
+            imapm.set_delete_flag
+          elsif (target_mailbox != mailbox)
+            imapm.copy(target_mailbox)
+            imapm.set_delete_flag
+          end
+        end
+        imap.close
+      end
+      imap.logout
+    else
+      files.each do |file|
+        open_ro(file) do |fh|
+          if (Options["import-clean"] || Options["import-spam"])
+            imported_dbs = read_exported_text(fh)
+            imported_dbs.each do |lang, db|
+              update_token_db_one(db)
+            end
+          else
+            mbox = Mbox::new(fh)
+            while (buf = mbox.read)
+              db = tokenize_buf(buf)
+              dbs.push(db)
+              if (Options["pipe"])
+                insert_headers!(buf, (Options["add-spam"] || Options["sub-clean"]), nil) 
+                print buf
+              end
+              update_token_db_one(db)
+            end
+          end
+        end
+      end
+    end
+    
+    slimed = false
+    Languages.each do |lang|
+      slimed |= DB[lang].clean.check_size(Options["max-mail"], Options["min-mail"])
+      slimed |= DB[lang].spam.check_size(Options["max-mail"], Options["min-mail"])
+      DB[lang].clean.close
+      DB[lang].spam.close
+    end
+    dbs.clear if (slimed) # disable incremental
+    return dbs
+  end
+  
+  def auto_update(token_dbs)
+    command = Hash::new
+    updated_langs = Array::new
+    token_dbs.each do |token_db|
+      updated_langs.push(token_db.language)
+    end
+    updated_langs.uniq.each do |lang|
+      DB[lang].clean.open("rw")
+      DB[lang].spam.open("rw")
+    end
+    
+    command["sub-clean"] = false
+    command["sub-spam"] = false
+    command["import-clean"] = false
+    command["import-spam"] = false
+    
+    token_dbs.each do |token_db|
+      if (token_db.spam_flag)
+        command["add-clean"] = false
+        command["add-spam"] = true
+      else
+        command["add-clean"] = true
+        command["add-spam"] = false
+      end
+      update_token_db_one(token_db, command)
+    end
+    
+    slimed = false
+    updated_langs.uniq.each do |lang|
+      slimed |= DB[lang].clean.check_size(Options["max-mail"], Options["min-mail"])
+      slimed |= DB[lang].spam.check_size(Options["max-mail"], Options["min-mail"])
+    end
+    token_dbs.clear if (slimed)   # can't use incremental mode
+    
+    updated_langs.uniq.each do |lang|
+      DB[lang].update_probability(token_dbs)
+    end
+    
+    updated_langs.uniq.each do |lang|
+      DB[lang].clean.close
+      DB[lang].spam.close
+    end
+  end
+  
+  def read_config_file(file)
+    configs = Array::new
+    
+    open(file) do |fh|
+      while (str = fh.gets)
+        if ((str =~ /\A\s*#/) || (str =~ /\A\s*\z/))
+          next
+        end
+        str.chomp!
+        str.sub!(/\s+\z/, '')
+        str.sub!(/\A\s+/, '')
+        tokens = str.split(/\s+/, 2)
+        if (! tokens.empty?)
+          tokens[0] = "--" + tokens[0]
+          configs.concat(tokens)
+        end
+      end
+    end
+    return configs
+  end
+  
+  def imap_get_target_uids(imap, mailbox)
+    keys = Array::new
+    if (mailbox =~ /(.*)\/(.*)/)
+      mailbox = $1
+      seqs = $2
+    else
+      seqs = nil
+    end
+    imap.select(mailbox)
+    if (Options["imap-fetch-unseen"])
+      if (seqs)
+        uids = imap.uid_search(["UNSEEN", seqs])
+      else
+        uids = imap.uid_search(["UNSEEN"])
+      end
+    else
+      if (seqs)
+        uids = imap.uid_search([seqs])
+      else
+        uids = imap.uid_search(["ALL"])
+      end
+    end
+    if (Options["imap-fetch-unflagged"])
+      uids = uids - imap.uid_search(["HEADER", "X-Spam-Flag", ""])
+    end
+    return uids
+  end
+  
+  class IMAPMessage
+    include Bsutil
+    def initialize(imap, uid=nil)
+      @seqno = nil
+      @seen = nil
+      @uid = uid
+      @imap = imap
+      @buf = Array::new
+    end
+    attr_accessor :seqno, :uid, :imap, :buf, :seen
+    
+    def fetch_rfc822
+      #    Options["message-fh"].printf("fetch_rfc822 %d\n", @uid) if (Options["verbose"])
+      fetched = @imap.uid_fetch(@uid, ["RFC822", "FLAGS"])
+      @seqno = fetched[0].seqno
+      @buf = fetched[0].attr["RFC822"].split("\n")
+      @seen = fetched[0].attr["FLAGS"].include?(:Seen)
+      if (! @seen)
+        @imap.uid_store(@uid, "-FLAGS", [:Seen])
+      end
+    end
+    
+    def insert_rfc822_headers!(*args)
+      return insert_headers!(@buf, *args)
+    end
+    
+    def insert_rfc822_header!(header, content)
+      #    Options["message-fh"].printf("insert_rfc822_header %d %s %s\n", @uid, header, content) if (Options["verbose"])
+      insert_header!(@buf, header, content)
+    end
+    
+    def append(mailbox)
+      @buf.map! do |str|
+        str.sub(/[\r\n]*\z/, "\r\n")
+      end
+      #    Options["message-fh"].printf("append %d %s\n", @uid, mailbox) if (Options["verbose"])    
+      if (@seen)
+        @imap.append(mailbox, @buf.join, [:Seen])
+      else
+        @imap.append(mailbox, @buf.join, [])
+      end
+    end
+    
+    def copy(mailbox)
+      #    Options["message-fh"].printf("copy %d %s\n", @uid, mailbox) if (Options["verbose"])    
+      @imap.uid_copy(@uid, mailbox)
+    end
+    
+    def set_delete_flag
+      #    Options["message-fh"].printf("set_delete_flag %d\n", @uid) if (Options["verbose"])    
+      @imap.uid_store(@uid, "+FLAGS", [:Deleted])
+    end
+    
+    def reset_seen_flag
+      #    Options["message-fh"].printf("reset_seen_flag %d\n", @uid) if (Options["verbose"])    
+      @seen = false
+      @imap.uid_store(@uid, "-FLAGS", [:Seen])
+    end
+  end
+  
+  def socket_send_rec(command, socket)
+    buf = Array::new
+    if (command)
+      Options["message-fh"].printf("send %s %s", socket, command.sub(/\APASS.*/i, "PASS ********")) if (Options["debug"])
+      socket.write_timeout(command) # pass command to pop-server
+    end
+    response = socket.gets_timeout # get response from pop-server
+    buf.push(response)
+    Options["message-fh"].printf("resp %s %s", socket, response.sub(/\APASS.*/i, "PASS ********")) if (Options["debug"])
+    if ((response =~ /\A\+OK/) &&
+        ((command =~ /(RETR|TOP|CAPA)/i) ||
+         (command =~ /(UIDL|LIST)[^\d]*\z/i)))
+      while (response != ".\r\n")
+        response = socket.gets_timeout
+        buf.push(response)
+      end
+    end
+    return buf
+  end
+  
+  def pop_proxy_multi(pop_proxy_sets)
+    trap("SIGINT") do
+      Options["message-fh"].printf("SIGINT received\n") if (Options["verbose"])
+      @threads.each do |thread|   # kill child threads
+        Thread::kill(thread)
+      end
+    end
+    
+    pop_proxy_sets.split(/,/).each do |pop_proxy_set|
+      (pop_server, pop_port, pop_proxy_if, pop_proxy_port, pop_user) = pop_proxy_set.split(/:/)
+      pop_port = Default_pop_port if ((! pop_port) || pop_port == '')
+      pop_proxy_if = Default_pop_proxy_if if ((! pop_proxy_if) || pop_proxy_if == '')
+      pop_proxy_port = Default_pop_proxy_port if ((! pop_proxy_port) || pop_proxy_port == '')
+      t = Thread::start do        # start child threads
+        pop_proxy_one(pop_server, pop_port, pop_proxy_if, pop_proxy_port, pop_user)
+      end
+      @threads.push(t)
+    end
+    @threads.each do |t|          # join child threads
+      t.join
+    end
+    
+    Thread::list.each do |t|      # join grandchild threads
+      t.join if (t != Thread::current)
+    end
+    return 0
+  end
+  
+  def pop_bypass_large_mail(command, pop_socket, pop_proxy_socket)
+    pop_socket.write_timeout(command) # RETR to server
+    str = pop_socket.gets_timeout # response from server
+    pop_proxy_socket.write_timeout(str) # forward
+    return if (str =~ /^\A\+ng/i)
+    
+    while (str != ".\r\n")
+      timeout(SOCKET_TIMEOUT) do
+        pop_proxy_socket.write(str = pop_socket.gets) # forward
+      end
+    end
+    return
+  end
+  
+  def snoop_list_response(strs)
+    h = DBHash::new
+    if (strs[0] =~ /\A\+ok\s*(\d+)\s+(\d+)/)
+      h[$1] = $2.to_i
+    else
+      strs.each do |str|
+        if (str =~ /^(\d+)\s+(\d+)/)
+          h[$1] = $2.to_i
+        end
+      end
+    end
+    return h
+  end
+  
+  def pop_proxy_one(pop_server, pop_port, pop_proxy_if, pop_proxy_port, pop_user)
+    gs = TCPserver.open(pop_proxy_if, pop_proxy_port)
+    addr = gs.addr
+    addr.shift
+    printf("pop_proxy is on %s\n", addr.join(":")) if (Options["verbose"])
+    while true
+      Thread::start(gs.accept) do |pop_proxy_socket| # start grandchild threads
+        print(pop_proxy_socket, " is accepted\n") if (Options["verbose"])
+        begin
+          pop_socket = nil
+          timeout(SOCKET_TIMEOUT) do
+            pop_socket = TCPsocket.open(pop_server, pop_port)
+          end
+          print(pop_socket, " is connected\n") if (Options["verbose"])
+          
+          hello = socket_send_rec(nil, pop_socket)[0]
+          hello.sub!(/(.*)\r/, "\\1(pop_proxy by bsfilter)\r")
+          pop_proxy_socket.write(hello)
+          
+          sizes = DBHash::new
+          while (command = socket_send_rec(nil, pop_proxy_socket)[0]) # get command from MUA
+            if (command =~ /\ARETR\s+(\d+)/i)
+              n = $1
+              if (sizes[n] && 
+                  (0 < Options["pop-max-size"]) && (Options["pop-max-size"] < sizes[n]))
+                pop_bypass_large_mail(command, pop_socket, pop_proxy_socket)
+                next
+              end
+            end
+            response = socket_send_rec(command, pop_socket)
+            if (command =~ /\ALIST/i)
+              sizes.update(snoop_list_response(response))
+            elsif ((command =~ /\A(TOP|RETR)/i) && (response[0] =~ /\A\+OK/))
+              buf = response[1..-1].dup
+              token_db = tokenize_buf(buf)
+              DB[token_db.language].prob.open("r")
+              DB[token_db.language].get_combined_probability(token_db)
+              DB[token_db.language].prob.close
+              if (Options["auto-update"])
+                auto_update([token_db])
+              elsif (Options["show-process"])
+                show_process(token_db, "-")
+              end
+              Options["message-fh"].printf("combined probability %f\n", token_db.probability) if (Options["verbose"])
+              insert_headers!(buf, token_db.spam_flag, token_db.probability)
+              response[1..-1] = buf
+            end
+            # don't use elsif
+            if (command =~ /QUIT/i)
+              pop_proxy_socket.write(response) # return response to MUA
+              break
+            elsif ((command =~ /\AUSER\s*(\S*)\r/) &&
+                   (pop_user && pop_user != $1))
+              Options["message-fh"].printf("username unmatch error\n")
+              pop_proxy_socket.write("-ERR unregistered user\r\n") # return response to MUA              
+              break
+            else
+              pop_proxy_socket.write(response) # return response to MUA              
+            end
+          end
+        rescue TimeoutError
+          Options["message-fh"].printf("Timeout error %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (Options["verbose"])
+        rescue
+          Options["message-fh"].printf("pop exception caught %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (Options["verbose"])
+          p "#{$!}" if (Options["verbose"])
+          p "#{$@}" if (Options["debug"])
+        ensure
+          if (pop_proxy_socket && ! pop_proxy_socket.closed?)
+            print(pop_proxy_socket, " is gone\n") if (Options["verbose"])
+            pop_proxy_socket.close 
+          end
+          if (pop_socket && ! pop_socket.closed?)
+            print(pop_socket, " is gone\n") if (Options["verbose"])
+            pop_socket.close 
+          end
+        end
+      end                         # thread end
+    end
+  end
+    
+  def check_options_for_pop!(options)
+    error = false
+    options["pop-port"] = Default_pop_port if (! options["pop-port"])
+    options["pop-proxy-if"] = Default_pop_proxy_if if (! options["pop-proxy-if"])
+    options["pop-proxy-port"] = Default_pop_proxy_port if (! options["pop-proxy-port"])
+    options["pop-max-size"] = (options["pop-max-size"] || Default_pop_max_size).to_i
+    
+    if (options["tasktray"])
+      require('vr/vrcontrol')
+      require('vr/vrtray')
+    end
+    
+    if (! options["pop-proxy-set"])
+      ["pop-server"].each do |name|
+        if (! options[name])
+          printf("specify %s\n", name)
+          error = true
+        end
+      end
+    end
+    
+    raise "error found in pop options" if (error)
+    return
+  end
+  
+  def check_options_for_imap!(options)
+    error = false
+    options["imap-port"] = Default_imap_port if (! options["imap-port"])
+    ["imap-server", "imap-auth", "imap-user", "imap-password"].each do |name|
+      if (! options[name])
+        printf("specify %s\n", name)
+        error = true
+      end
+    end
+    
+    raise "error found in imap options" if (error)
+    return
+  end
+  
+  def do_imap(command_line_args, token_dbs)
+    ret_code = CODE_CLEAN
+    imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+    imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+    imap.select(Options["imap-folder-clean"]) if (Options["imap-folder-clean"]) # only for check
+    imap.select(Options["imap-folder-spam"]) if (Options["imap-folder-spam"]) # only for check
+    command_line_args.each do |mailbox|
+      uids = imap_get_target_uids(imap, mailbox)
+      uids.each do |uid|
+        imapm = IMAPMessage::new(imap, uid)
+        imapm.fetch_rfc822
+        token_db = tokenize_buf(imapm.buf)
+        DB[token_db.language].get_combined_probability(token_db)
+        token_dbs.push(token_db)
+        Options["message-fh"].printf("combined probability %s %d %f\n", mailbox, imapm.seqno, token_db.probability) if (Options["verbose"])
+        if (Options["show-process"] && ! Options["auto-update"])
+          show_process(token_db, "-") 
+        end
+        updated = false
+        target_mailbox = mailbox
+        if (token_db.spam_flag)
+          target_mailbox = Options["imap-folder-spam"] if (Options["imap-folder-spam"])
+          ret_code = CODE_SPAM
+        else
+          target_mailbox = Options["imap-folder-clean"] if (Options["imap-folder-clean"])
+        end
+        updated = imapm.insert_rfc822_headers!(token_db.spam_flag, token_db.probability)
+        if (updated)
+          imapm.reset_seen_flag if (Options["imap-reset-seen-flag"])
+          imapm.append(target_mailbox)
+          imapm.set_delete_flag
+        elsif (target_mailbox != mailbox)
+          imapm.reset_seen_flag if (Options["imap-reset-seen-flag"])
+          imapm.copy(target_mailbox)
+          imapm.set_delete_flag
+        end
+      end
+      imap.close
+    end
+    imap.logout
+    return ret_code
+  end
+  
+  
+  def do_export(command_line_args)
+    if (command_line_args.empty?)
+      file = "-"
+    else
+      file = command_line_args[0]
+    end
+    if (Options["export-clean"])
+      open_wo(file) do |fh|
+        Languages.each do |lang|
+          DB[lang].clean.open("r")
+          DB[lang].clean.export(fh) if (DB[lang].clean.file_count > 0)
+          DB[lang].clean.close
+        end
+      end
+    end
+    if (Options["export-spam"])
+      open_wo(file) do |fh|
+        Languages.each do |lang|
+          DB[lang].spam.open("r")
+          DB[lang].spam.export(fh) if (DB[lang].spam.file_count > 0)
+          DB[lang].spam.close
+        end
+      end
+    end
+    if (Options["export-probability"])
+      open_wo(file) do |fh|
+        Languages.each do |lang|
+          DB[lang].prob.open("r")
+          DB[lang].prob.export(fh) if (DB[lang].prob.file_count > 0)
+          DB[lang].prob.close
+        end
+      end
+    end
+  end
+  
+  def setup_imap
+    Net::IMAP.class_eval <<EOM
+      def auto_authenticate(auth, user, password, auth_list=[])
+        case auth.downcase
+        when "loginc"
+          if (Options["verbose"])
+            Options["message-fh"].printf("try to login imap server for %s with login command\n", user)
+          end
+          return login(user, password)
+        when "auto"
+          capa = capability
+          auth_list.each do |auth|
+            if (auth == "loginc")
+              return auto_authenticate("loginc", user, password)
+            elsif (capa.include?("AUTH=" + auth.upcase))
+              return auto_authenticate(auth, user, password)
+            end
+          end
+          raise sprintf("can't login imap server for %s with %s", user, auth_list)
+        else
+          if (Options["verbose"])
+            Options["message-fh"].printf("try to login imap server for %s with authenticate %s\n", user, auth)
+          end
+          return authenticate(auth, user, password)
+        end
+      end
+EOM
+  end
+  
+  def setup_socket_timeout
+    TCPSocket.class_eval <<EOM
+      def write_timeout(str)
+        timeout(SOCKET_TIMEOUT) do
+          return self.write(str)
+        end
+      end
+      def gets_timeout
+        timeout(SOCKET_TIMEOUT) do
+          return self.gets
+        end
+      end
+EOM
+  end
+  
+  def setup_tasktray
+    eval <<EOM
+    class MyForm < VRForm
+      include VRTrayiconFeasible
+      include VRMenuUseable
+      LoadIcon = Win32API.new("user32", "LoadIcon", "II", "I")
+      EXCLAMATIONICON = LoadIcon.call(0, 32515)
+      
+      def construct
+        @traymenu = newPopupMenu
+        @traymenu.set([
+                       ["exit", "exit"]
+                     ])
+        @mytrayicon=0
+      end
+      def self_trayrbuttonup(iconid)
+        showPopup @traymenu
+      end
+      def into_trayicon
+        create_trayicon(EXCLAMATIONICON, "bsfilter release #{Release} revision #{Revision}", @mytrayicon)
+        myexstyle = self.exwinstyle
+        myexstyle.ws_ex_toolwindow = true
+        myexstyle.ws_ex_appwindow = false
+      end
+      
+      def exit_clicked
+        delete_trayicon(@mytrayicon)
+        self.close
+      end
+    end
+EOM
+    frm = VRLocalScreen.newform(nil, nil, MyForm)
+    frm.create
+    frm.into_trayicon
+      VRLocalScreen.messageloop
+      @threads.each do |thread|   # kill child threads
+        Thread::kill(thread)
+      end
+  end
+    
+  def do_pop
+    Thread.abort_on_exception = true
+    Options["message-fh"].print "pop mode start ", Time::new.to_s, "\n" if (Options["verbose"])    
+    
+    if (Options["tasktray"])
+      Thread::start do
+        setup_tasktray 
+      end
+    end
+    
+    if (Options["pop-proxy-set"])
+      pop_proxy_sets = Options["pop-proxy-set"].gsub(/\s/, '')
+    else
+      pop_proxy_sets = [Options["pop-server"], Options["pop-port"], 
+                        Options["pop-proxy-if"], Options["pop-proxy-port"], Options["pop-user"]].join(":")
+    end
+    ret_code = pop_proxy_multi(pop_proxy_sets)
+    
+    # never reached
+    Options["message-fh"].print "pop mode end ", Time::new.to_s, "\n" if (Options["verbose"])
+    return ret_code
+  end
+    
+  def  write_pid_file(file)
+    open(file, "w") do |fh|
+      fh.print Process::pid, "\n"
+    end
+  end
+    
+  def parse_command_line
+    options = DBHash::new
+    
+    parser = GetoptLong.new
+    parser.ordering = GetoptLong::REQUIRE_ORDER
+    parser.set_options(
+                       ["--pop", GetoptLong::NO_ARGUMENT],
+                       ["--tasktray", GetoptLong::NO_ARGUMENT],
+                       ["--pop-proxy-set", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-server", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-port", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-proxy-if", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-proxy-port", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-user", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pop-max-size", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap", GetoptLong::NO_ARGUMENT],
+                       ["--imap-server", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-port", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-auth", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-user", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-password", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-folder-clean", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-folder-spam", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--imap-fetch-unseen", GetoptLong::NO_ARGUMENT],
+                       ["--imap-fetch-unflagged", GetoptLong::NO_ARGUMENT],
+                       ["--imap-reset-seen-flag", GetoptLong::NO_ARGUMENT],
+                       ["--homedir", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--config-file", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--pid-file", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--db", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--max-line", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--export-clean", GetoptLong::NO_ARGUMENT],
+                       ["--export-spam", GetoptLong::NO_ARGUMENT],
+                       ["--export-probability", GetoptLong::NO_ARGUMENT],
+                       ["--import-clean", GetoptLong::NO_ARGUMENT],
+                       ["--import-spam", GetoptLong::NO_ARGUMENT],
+                       ["--mbox", GetoptLong::NO_ARGUMENT],
+                       ["--jtokenizer", "-j", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--method", "-m", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--spam-cutoff", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--mark-in-token", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--max-mail", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--min-mail", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--show-new-token", GetoptLong::NO_ARGUMENT],
+                       ["--auto-update", "-a", GetoptLong::NO_ARGUMENT],
+                       ["--update", "-u", GetoptLong::NO_ARGUMENT],
+                       ["--add-clean", "-c", GetoptLong::NO_ARGUMENT],
+                       ["--add-spam", "-s", GetoptLong::NO_ARGUMENT],
+                       ["--sub-clean", "-C", GetoptLong::NO_ARGUMENT],
+                       ["--sub-spam", "-S", GetoptLong::NO_ARGUMENT],
+                       ["--disable-degeneration", "-D", GetoptLong::NO_ARGUMENT],
+                       ["--disable-utf-8", GetoptLong::NO_ARGUMENT],
+                       ["--ignore-body", "-B", GetoptLong::NO_ARGUMENT],
+                       ["--ignore-header", "-H", GetoptLong::NO_ARGUMENT],
+                       ["--ignore-plain-text-part", GetoptLong::NO_ARGUMENT],
+                       ["--ignore-after-last-atag", GetoptLong::NO_ARGUMENT],
+                       ["--pipe", GetoptLong::NO_ARGUMENT],
+                       ["--insert-revision", GetoptLong::NO_ARGUMENT],
+                       ["--insert-flag", GetoptLong::NO_ARGUMENT],
+                       ["--insert-probability", GetoptLong::NO_ARGUMENT],
+                       ["--header-prefix", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--list-clean", GetoptLong::NO_ARGUMENT],
+                       ["--list-spam", GetoptLong::NO_ARGUMENT],
+                       ["--show-db-status", GetoptLong::NO_ARGUMENT],
+                       ["--show-process", GetoptLong::NO_ARGUMENT],
+                       ["--help", "-h", GetoptLong::NO_ARGUMENT],
+                       ["--revision", GetoptLong::NO_ARGUMENT],
+                       ["--quiet", "-q", GetoptLong::NO_ARGUMENT],
+                       ["--debug", "-d", GetoptLong::NO_ARGUMENT],
+                       ["--verbose", "-v", GetoptLong::NO_ARGUMENT])
+    
+    allow_multi = {"pop-proxy-set" => true}
+    
+    parser.quiet = true
+    begin
+      parser.each_option do |name, arg|
+        name.sub!(/^--/, '')
+        if (options[name] && allow_multi[name])
+          options[name] += ("," + arg)
+        else
+          options[name] = arg.dup
+        end
+      end
+    rescue
+      usage
+      raise parser.error_message
+    end
+    return options
+  end
+    
+    
+  def get_options
+    argv_backup = Marshal::load(Marshal::dump(ARGV)) # shallow copy is enough?
+    options = parse_command_line
+    
+    if (options["config-file"] && (! File::file?(options["config-file"])))
+      raise sprintf("can't find config file %s\n", options["config-file"])
+    end
+    
+    if (! options["homedir"])
+      if (ENV["BSFILTERHOME"])
+        options["homedir"] = ENV["BSFILTERHOME"]
+      elsif (ENV["HOME"])
+        options["homedir"] = ENV["HOME"] + "/" + Default_homedir
+      elsif (defined?(Exerb) && Exerb.runtime?)
+        options["homedir"] = File.dirname(Exerb.filepath)
+      else
+        options["homedir"] = File.dirname($0)
+      end
+    end
+    
+    if (! options["config-file"])
+      options["config-file"] = options["homedir"] + "/" + Default_conf_file
+    end
+    if (options["config-file"] && File::file?(options["config-file"]))
+      ARGV.clear
+      argv_config = read_config_file(options["config-file"])
+      (argv_config + argv_backup).reverse.each do |argv|
+        ARGV.unshift(argv)
+      end
+      options.update(parse_command_line)
+    end
+    
+    if (options["help"])
+      usage
+      exit 0
+    end
+    if (options["revision"])
+      print "bsfilter release #{Release} revision #{Revision}\n"
+      exit 0
+    end
+    
+    options["homedir"] = options["homedir"].sub(/\/*$/, '') + "/"
+    
+    if (options["method"])
+      if (options["method"] !~ /\A(g|r|rf)\z/)
+        usage
+        raise sprintf("unsupported method %s\n", options["method"])
+      end
+    else
+      options["method"] = Default_method
+    end
+    
+    options["header-prefix"] = Default_header_prefix if (! options["header-prefix"])
+    
+    options["db"] = Default_db if (! options["db"])
+    case options["db"]
+    when "marshal"
+    when "sdbm"
+      require 'sdbm'
+    when "gdbm"
+      require 'gdbm'
+    when "bdb1"
+      require 'bdb1'
+    else
+      raise sprintf("unsupported db %s\n", options["db"])
+    end
+    
+    if (options["jtokenizer"])
+      options["jtokenizer"].downcase!
+    else
+      options["jtokenizer"] = Default_jtokenizer
+    end
+    case options["jtokenizer"]
+    when "bigram"
+    when "block"
+    when "mecab"
+      require 'MeCab'
+    when "chasen"
+      require 'chasen.o'
+    when "kakasi"
+      require 'kakasi'
+    else
+      raise sprintf("unsupported jtokenizer %s\n", options["jtokenizer"])
+    end
+    Jtokenizer::set(options["jtokenizer"])
+    
+    options['mark-in-token'] = Default_mark_in_token if (! options['mark-in-token'])
+    options['mark-in-token'].gsub!(/\s/, '')
+    options["max-line"] = (options["max-line"] || Default_max_line).to_i
+    options["max-mail"] = (options["max-mail"] || Default_max_mail).to_i
+    options["min-mail"] = (options["min-mail"] || Default_min_mail).to_i
+    
+    options["degeneration"] = options["disable-degeneration"] ? false : true
+    options["use-header"] = options["ignore-header"] ? false : true
+    options["use-body"] = options["ignore-body"] ? false : true
+    
+    options["pid-file"] = options["homedir"] + Default_pid_file if (! options["pid-file"]) 
+    
+    options["imap-auth"] = options["imap-auth"] || Default_imap_auth
+    options["imap-auth-preference"] = Default_imap_auth_preference # can't modify with command line option
+    
+    if ((! options["disable-utf-8"]) &&
+        safe_require("iconv"))
+      options["utf-8"] = true
+      define_safe_iconv
+    else
+      options["utf-8"] = false
+    end
+    
+    if (options["pop"])
+      check_options_for_pop!(options)
+      require 'timeout' 
+      require 'socket'
+      setup_socket_timeout
+    end
+    if (options["imap"])
+      check_options_for_imap!(options)
+      require 'net/imap'
+      setup_imap
+    end
+    return options
+  end
+    
+  def show_db_status
+    Languages.each do |lang|
+      DB[lang].clean.open("r")
+      DB[lang].spam.open("r")
+      DB[lang].prob.open("r")
+      Options["message-fh"].printf("db %s %d %d %d %d %d\n", lang,
+                         DB[lang].clean.size,
+                         DB[lang].clean.file_count,
+                         DB[lang].spam.size,
+                         DB[lang].spam.file_count,
+                         DB[lang].prob.size)
+      DB[lang].prob.close
+      DB[lang].spam.close
+      DB[lang].clean.close
+    end
+  end
+    
+  def show_process(token_db, maintenance_command)
+    if (Options["pop"])
+      prot = "pop"
+    elsif (Options["imap"])
+      prot = "imap"
+    else
+      prot = "file"
+    end
+    
+    case token_db.spam_flag
+    when nil
+      filter_result = "-"
+    when true
+      filter_result = "spam"
+    when false
+      filter_result = "clean"
+    else
+      raise "unknown spam_flag"
+    end
+    
+    Options["message-fh"].printf("%s %s %s %s %s %s\n",
+                       prot,
+                       token_db.language,
+                       filter_result,
+                       maintenance_command,
+                       Time::new.strftime("%Y%m%d%H%M%S"),
+                       token_db.message_id)
+  end
+
+  def spam?
+    @token_dbs.last.spam_flag
+  end
+
+  def probability
+    @token_dbs.last.probability
+  end
+    
+  def setup(command_line_options)
+    command_line_options_backup = command_line_options.dup
+    argv_backup = ARGV.dup
+    ARGV.clear
+    if (! command_line_options_backup.empty?)
+      ARGV.unshift(*command_line_options_backup)
+    end
+
+    Options.update(get_options)
+
+    if (Options["quiet"])
+      Options["message-fh"] = DevNull::new
+    elsif (((Options["export-clean"] || Options["export-spam"] || Options["export-probability"]) &&
+         ((ARGV.length == 0) || (ARGV[0] == "-"))) || # export to stdout
+        Options["list-clean"] || Options["list-spam"] || Options["pipe"])
+      Options["message-fh"] = STDERR
+    else
+      Options["message-fh"] = STDOUT
+    end
+    Options["message-fh"].sync = true
+    Options["message-fh"].print("marshal is deprecated; use another database format\n") if (Options["db"] == "marshal")
+    
+    Options['mark-in-token'] = Regexp::quote(Options['mark-in-token'])
+    
+    init_dir(Options["homedir"])
+    Options["message-fh"].print "start ", Time::new.to_s, "\n" if (Options["verbose"])
+    
+    Languages.each do |lang|
+      case Options["method"]
+      when 'rf'
+        DB[lang] = RobinsonFisher::new(lang)
+      when 'r'
+        DB[lang] = Robinson::new(lang)
+      when 'g'
+        DB[lang] = Graham::new(lang)
+      else
+        raise sprintf("unknown method %s", Options["method"])
+      end
+      DB[lang].spam_cutoff = Options["spam-cutoff"].to_f if (Options["spam-cutoff"])
+    end
+
+    rest_options = ARGV.dup
+    ARGV.clear
+    if (! argv_backup.empty?)
+      ARGV.unshift(*argv_backup)
+    end
+
+    return rest_options
+  end
+
+  def run(command_line_args)
+    if (Options["show-db-status"])
+      show_db_status
+      return EXIT_NORMAL
+    end
+    
+    if (Options["pop"])
+      write_pid_file(Options["pid-file"])
+      do_pop
+      File::unlink(Options["pid-file"])
+      return EXIT_NORMAL
+    end
+    
+    filtering_mode = true
+    
+    token_dbs = Array::new
+    @token_dbs = token_dbs
+    if (Options["import-clean"] ||
+        Options["import-spam"] ||
+        Options["add-clean"] ||
+        Options["add-spam"] ||
+        Options["sub-clean"] ||
+        Options["sub-spam"])
+      filtering_mode = false
+      if (command_line_args.empty? && ! Options["imap"])
+        token_dbs = update_token_dbs(["-"])
+      else
+        token_dbs = update_token_dbs(command_line_args)
+      end
+    end
+    
+    if (Options["export-clean"] || Options["export-spam"] || Options["export-probability"])
+      filtering_mode = false
+      do_export(command_line_args)
+    end
+    
+    if (Options["update"])
+      filtering_mode = false
+      Languages.each do |lang|
+        DB[lang].clean.open("r")
+        DB[lang].spam.open("r")
+        DB[lang].update_probability(token_dbs) # dbs = Array of TokenDB for -c, -s
+        DB[lang].clean.close
+        DB[lang].spam.close
+      end
+    end
+    
+    ret_code = CODE_NORMAL
+    if (filtering_mode)
+      Languages.each do |lang|
+        DB[lang].prob.open("r")
+      end
+      if (Options["imap"])
+        ret_code = do_imap(command_line_args, token_dbs)
+      else
+        if (command_line_args.empty?)
+          command_line_args = ["-"]
+        end
+        ret_code = CODE_CLEAN if (! Options["pipe"])
+        command_line_args.each do |file|
+          open_ro(file) do |fh|
+            number = 1
+            mbox = Mbox::new(fh)
+            while (buf = mbox.read)
+              token_db = tokenize_buf(buf)
+              DB[token_db.language].get_combined_probability(token_db)
+              insert_headers!(buf, token_db.spam_flag, token_db.probability) 
+              if (Options["pipe"])
+                print buf
+              end
+              printf("%s\n", file) if (token_db.spam_flag && Options["list-spam"])
+              printf("%s\n", file) if (! token_db.spam_flag && Options["list-clean"])
+              ret_code = CODE_SPAM if (token_db.spam_flag && (! Options["pipe"]))
+              token_dbs.push(token_db)
+              if (defined?(fh.path))
+                Options["message-fh"].printf("combined probability %s %d %f\n", 
+                                             fh.path, number, token_db.probability) 
+              end
+              number += 1
+            end
+          end
+        end
+      end
+      Languages.each do |lang|
+        DB[lang].prob.close
+      end
+      STDOUT::flush
+      if (Options["auto-update"])
+        auto_update(token_dbs) 
+      elsif (Options["show-process"])
+        token_dbs.each do |token_db|
+          show_process(token_db, "-")
+        end
+      end
+    end
+    Options["message-fh"].print "end ", Time::new.to_s, "\n" if (Options["verbose"])
+    
+    return ret_code
+  end
+end
+
+if ($0 == __FILE__)
+  bsfilter = Bsfilter::new
+  args = bsfilter.setup(ARGV)
+  if (bsfilter.run(args))
+    exit 0
+  else
+    exit 1
+  end
+end

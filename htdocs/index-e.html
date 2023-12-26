@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta http-equiv="adalign" content="right" />
+<link rel="stylesheet" href="bsfilter.css" type="text/css" />
+<title>bsfilter / bayesian spam filter</title>
+</head>
+
+<body>
+<p class="version">$Id: index-e.html,v 1.5 2004/08/13 16:59:17 nabeken Exp $</p>
+<h1>bsfilter / bayesian spam filter</h1>
+
+<p class="icon">
+<a href="index.html">japanses</a>
+<a href="index-e.html">english</a>
+</p>
+
+<p class="icon">
+<a href="http://jigsaw.w3.org/css-validator/check/referer">
+<img src="vcss.png" alt="Valid CSS!" height="31" width="88" /></a>
+<a href="http://validator.w3.org/check/referer">
+<img src="valid-xhtml11.png" alt="Valid XHTML 1.1!" height="31" width="88" /></a>
+<a href="http://sourceforge.jp/">
+<img src="http://sourceforge.jp/sflogo.php?group_id=1011" alt="SourceForge.jp" width="96" height="31" /></a>
+</p>
+
+<h2>0. What is bsfilter ?</h2>
+<ul>
+<li>a filter which distinguishes spam and non-spam(called "clean" in this page) mail</li>
+<li>support mails written in japanese language</li>
+<li>written in Ruby</li>
+<li>support 3 methods for access<ul>
+	  <li>traditional unix-style filter. study and judge local files or pipe</li>
+	  <li>IMAP. study and judge mails in an IMAP server</li>
+	  <li>POP proxy. run between POP server and MUA</li>
+</ul></li>
+<li>basic concepts come from
+<a href="http://www.paulgraham.com/spam.html">A Plan for Spam</a>,
+<a href="http://www.paulgraham.com/better.html">Better Bayesian Filtering</a>,
+<a href="http://radio.weblogs.com/0101454/stories/2002/09/16/spamDetection.html">Spam Detection</a>
+</li>
+<li>distributed under GPL</li>
+</ul>
+
+<h2><a id="toc">1. Contents</a></h2>
+<ul>
+<li><a href="#toc">1. Contents</a></li>
+<li><a href="#download">2. Download</a></li>
+<li><a href="#concept">3. How bsfilter works?</a></li>
+<li><a href="#started">4. Lets' get started</a></li>
+<li><a href="#help">5. Help</a></li>
+<li><a href="#usage">6. Usage</a></li>
+<li><a href="#imap">7. Usage(IMAP)</a></li>
+<li><a href="#pop">8. Usage(POP proxy)</a></li>
+</ul>
+
+<h2><a id="download">2. Download</a></h2>
+<ul>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.4.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVS access</strong></a></li>
+</ul>
+
+<h2><a id="concept">3. How bsfilter works?</a></h2>
+<h3>3.1. using spam proability of each token</h3>
+<p class="fig"><img src="judge.png" alt="using spam proability of each token" /></p>
+
+<h3>3.2. need to prepare</h3>
+<p class="fig"><img src="prepare.png" alt="need to prepare" /></p>
+
+<h2><a id="started">4. Let's get started</a></h2>
+<h3>preprare</h3>
+<p>It is necessary to prepare databases before filtering</p>
+<p>1. count tokens in clean mails</p>
+<pre>
+% bsfilter --add-clean ~/Mail/inbox/*
+</pre>
+<p>2. count tokens in spam</p>
+<pre>
+% bsfilter --add-spam ~/Mail/spam/*
+</pre>
+<p>3. calculate spam probability for each token</p>
+<pre>
+% bsfilter --update
+</pre>
+
+<h3>filtering</h3>
+<p>example: specify filenames for filtering as command line argumetns. spam probability numbers(between 0 and 1) are displayed.</p>
+<pre>
+% bsfilter ~/Mail/inbox/1
+combined probability /home/nabeken/Mail/inbox/1 1 0.012701
+</pre>
+
+<p>example: feed mail for filtering through stdin pipe. exit status is 0 in case of spam</p>
+<pre>
+~% bsfilter &lt; ~/Mail/inbox/1 ; echo $status
+1
+~% bsfilter &lt; ~/Mail/spam/1 ; echo $status
+0
+</pre>
+<p>procmail sample recipe 1:
+move spams to spam folder using exit status</p>
+<pre>
+:0 HB:
+* ? bsfilter -a
+spam/.
+</pre>
+<p>procmail sample recipe 1:
+add <code>X-Spam-Flag:</code>, <code>X-Spam-Probability:</code> headers and
+move spams to black or gray folder based on spam probability at <code>X-Spam-Probability:</code> header</p>
+<pre>
+:0 fw
+| /home/nabeken/bin/bsfilter --pipe --insert-flag --insert-probability
+
+:0
+* ^X-Spam-Probability: *(1|0\.[89])
+black/.
+
+:0
+* ^X-Spam-Probability: *0\.[67]
+gray/.
+</pre>
+
+<h2><a id="help">5. Help</a></h2>
+<p><a href="http://sourceforge.jp/forum/?group_id=1011">bsfilter forum</a></p>
+
+<h2><a id="usage">6. Usage</a></h2>
+<h3>formats of command line</h3>
+<p>there are 2 formats.</p>
+<ol>
+<li>bsfilter [options] [commands] &lt; MAIL</li>
+<li>bsfilter [options] [commands] MAIL ...</li>
+</ol>
+<p>There are maintenance mode and filtering mode.</p>
+<ul>
+<li>When commands are spcecified, bsfilter is under maintenance mode. It updates databases, but doesn't judge mails.</li>
+<li>When commands aren't specified, bsfilter is under filtering mode. It judges mails, but doen't update databases.</li>
+<li>There is an exception. When "auto-update" is specified in filtering mode, bsfilter updates databases and judge mails also.</li>
+</ul>
+<p>
+Use format 1 in filtering mode in order to feed mail from stdin and judge it. Exit status becomes 0 in case of spam.
+If bsfilter invoked by MDA(procmailrc and etc), this style are used.
+</p>
+<p>
+Use format 2 in filtering mode in order to specify multiple mails at command line and judge at once.
+Results are displayed at stdout.
+</p>
+<p><strong>type "bsfilter --help" to see all commands and options.</strong></p>
+
+<h2><a id="imap">7. Usage(IMAP)</a></h2>
+<p>bsfilter is able to communicate server by IMAP and study or judge mails stored in it.
+bsfilter is able to insert headers or move mails to a specified folder 
+</p>
+<p class="fig"><img src="imap.png" alt="communicate with IAMP server" /></p>
+
+<h3>example</h3>
+<p>sample of bsfilter.conf</p>
+<pre>
+imap-server server.example.com
+imap-auth login
+imap-user hanako
+imap-password open_sesame
+</pre>
+<p>judge mails without X-Spam-Flag in "inbox", insert X-Spam-Probability header and move spams into "inbox.spam"</p>
+<pre>
+% bsfilter --imap --imap-fetch-unflagged --insert-flag --insert-probability --imap-folder-spam inbox.spam inbox
+</pre>
+
+<h2><a id="pop">8. Usage(POP proxy)</a></h2>
+<p>bsfilter ia able to work as POP proxy and judge mails and insert headers on a path from POP server to MUA.</p>
+<p class="fig"><img src="pop.png" alt="work as POP proxy" /></p>
+
+<h3>example</h3>
+<p>sample of bsfilter.conf</p>
+<pre>
+pop-server server.example.com
+pop-proxy-port 10110
+pop-user alice
+insert-flag
+insert-probability
+</pre>
+<p>invoke bsfilter like the following and change preference of MUA to access port 10110 of a host which bsfilter runs.
+When MUA receives a mail, X-Spam-Flag, X-Spam-Probability are added into the mail and databases are updated.</p>
+<pre>
+% bsfilter --pop --auto-update
+</pre>
+
+</body>
+</html>

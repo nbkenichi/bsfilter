@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.85 2008/03/02 13:02:11 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.86 2010/11/20 10:07:45 nabeken Exp $
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
@@ -29,9 +29,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_16 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_17 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.85 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.86 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Default_Language = "C"
 
@@ -980,6 +980,9 @@ EOM
       end
     end
     
+    num_of_dquote = 0
+    ignore_dquote = false
+
     while (str = buf.shift)
       header_buf.push(str)
       str = str.chomp
@@ -992,9 +995,9 @@ EOM
         end
       elsif (str =~ /\A>?from\s+(\S+)/i)
         headers["ufrom"] = $1
-      elsif (str =~ /\A[\r\n]*\z/) # separator between header and body
+      elsif (str =~ /\A[\r\n]*\z/ && (ignore_dquote || (num_of_dquote % 2 == 0))) # separator between header and body
         break
-      elsif (str =~ /\A\S/)     # found body without separator
+      elsif (str =~ /\A\S/ && (ignore_dquote || (num_of_dquote % 2 == 0))) # found body without separator
         buf.push(str)           # rewind
         break
       elsif (! current)
@@ -1005,6 +1008,18 @@ EOM
         else
           headers[current] += str.sub(/[\r\n]*\z/, '').sub(/\A\s*/, ' ')
         end
+      end
+      ## start count on from, to and cc line
+      ## contiune count while number of dquote is odd
+      if ((current =~ /\A(from|to|cc)\z/) || (num_of_dquote % 2 != 0))
+        num_of_dquote = num_of_dquote + str.scan(/\"/).length - str.scan(/\\\"/).length
+      end
+
+      if (buf.empty? && ! ignore_dquote)           # retry?
+        ignore_dquote = true
+        buf.concat(header_buf)
+        header_buf.clear
+        headers.clear
       end
     end
 
@@ -1183,7 +1198,7 @@ EOM
 
 #    "authentication-results", "domainkey-signature"
     headers.each do |header, content|
-      if (@options["refer-header"][header])
+      if (@options["refer-all-header"] || @options["refer-header"][header])
         if (lang == "ja")
           content.gsub!(/=\?utf\-8\?([bq])\?(\S*)\?=/i) do |s|
             b_or_q = $1
@@ -2069,6 +2084,9 @@ OPTIONS
 		refer specified headers of mails
 		"#{Default_refer_header}"
 		by default
+
+	--refer-all-header
+		refer all headers of mails
 
 	--ignore-header|-H
 		ignore headers of mails
@@ -3006,6 +3024,7 @@ EOM
                        ["--disable-utf-8", GetoptLong::NO_ARGUMENT],
                        ["--ignore-body", "-B", GetoptLong::NO_ARGUMENT],
                        ["--refer-header", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--refer-all-header", GetoptLong::NO_ARGUMENT],
                        ["--ignore-header", "-H", GetoptLong::NO_ARGUMENT],
                        ["--ignore-plain-text-part", GetoptLong::NO_ARGUMENT],
                        ["--ignore-after-last-atag", GetoptLong::NO_ARGUMENT],
@@ -3058,8 +3077,8 @@ EOM
         options["homedir"] = ENV["BSFILTERHOME"]
       elsif (ENV["HOME"])
         options["homedir"] = ENV["HOME"] + "/" + Default_homedir
-      elsif (defined?(Exerb) && Exerb.runtime?)
-        options["homedir"] = File.dirname(Exerb.filepath)
+      elsif (defined?(ExerbRuntime))
+        options["homedir"] = File.dirname(ExerbRuntime.filepath)
       else
         options["homedir"] = File.dirname($0)
       end

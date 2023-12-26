@@ -1,0 +1,21 @@
+Received: from host3.example.com
+	by host4.example.com (8.12.11/8.12.11) with ESMTP id abcdefgh
+Received: from host2.example.com
+	by host3.example.com (8.12.11/8.12.11) with ESMTP id abcdefgh
+Received: from host1.example.com
+	by host2.example.com (8.12.11/8.12.11) with ESMTP id abcdefgh
+Date: Sat, 23 Jul 2005 00:24:41 +0900 (JST)
+Message-Id: <20050723.002441.78702756@example.com>
+To: user@example.com
+Subject: test
+From: user@example.com
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+quote head
+tail
+> quote head
+> tail
+| quote head
+| tail

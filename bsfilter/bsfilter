@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.73 2005/07/23 11:11:41 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.75 2005/11/14 14:52:36 nabeken Exp $
 
 ## Copyright (C) 2003, 2004, 2005 NABEYA Kenichi
 ##
@@ -24,15 +24,19 @@ class Bsfilter
   def initialize
     @threads = Array::new
     @token_dbs = nil
+    @options = Hash::new
+    @db_hash = Hash::new
+    @jtokenizer = nil
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_9 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_10 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.73 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.75 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
-  Options = Hash::new           # used like a global variable
-  DB = Hash::new
+
+##  Options = Hash::new           # used like a global variable
+##  DB = Hash::new
   
   Default_header_prefix = "Spam"
   Default_spam_subject_prefix = "[SPAM] "
@@ -147,24 +151,24 @@ class Bsfilter
     end
 
     def x_spam_flag
-      return sprintf("X-%s-Flag:", Options["header-prefix"])
+      return sprintf("X-%s-Flag:", @options["header-prefix"])
     end
     
     def x_spam_probability
-      return sprintf("X-%s-Probability:", Options["header-prefix"])
+      return sprintf("X-%s-Probability:", @options["header-prefix"])
     end
     
     def x_spam_revision
-      return sprintf("X-%s-Revision:", Options["header-prefix"])
+      return sprintf("X-%s-Revision:", @options["header-prefix"])
     end
     
     def insert_headers!(buf, spam_flag, probability=nil)
       updated = false
-      if (Options["insert-revision"])
+      if (@options["insert-revision"])
         insert_header!(buf, x_spam_revision, "bsfilter release #{Release} revision #{Revision}")
         updated = true
       end
-      if (Options["insert-flag"])
+      if (@options["insert-flag"])
         updated = true
         if (spam_flag)
           insert_header!(buf, x_spam_flag, "Yes")
@@ -172,14 +176,14 @@ class Bsfilter
           insert_header!(buf, x_spam_flag, "No")
         end
       end
-      if (Options["insert-probability"] && probability)
+      if (@options["insert-probability"] && probability)
         updated = true
         insert_header!(buf, x_spam_probability, sprintf("%f", probability))
       end
-      if (Options["mark-spam-subject"])
+      if (@options["mark-spam-subject"])
         updated = true
         if (spam_flag)
-          append_header!(buf, "Subject:", Options["spam-subject-prefix"])
+          append_header!(buf, "Subject:", @options["spam-subject-prefix"])
         end
       end
       return updated
@@ -384,7 +388,7 @@ EOM
         @mant = 0
         @exp = 0
       end
-      @self
+      self
     end
   end
   
@@ -395,16 +399,16 @@ EOM
         return false
       end
       old_count = @file_count
-      if (Options["verbose"])
-        Options["message-fh"].printf("reduce token database %s from %d to %d\n", @filename, old_count, min_size)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reduce token database %s from %d to %d\n", @filename, old_count, min_size)
       end
       
       key_cts.each do |(category, token)|
         if (category != ".internal")
           v = value(category, token) || 0
           sub_scalar(category, token, (v * (old_count - min_size).to_f / old_count.to_f).ceil)
-          if (Options["debug"] && ! value(category, token))
-            Options["message-fh"].printf("deleted %s %s\n", category, token)
+          if (@options["debug"] && ! value(category, token))
+            @options["message-fh"].printf("deleted %s %s\n", category, token)
           end
         end
       end
@@ -416,13 +420,13 @@ EOM
     def value_with_degene(category, token)
       if (value(category, token))
         return value(category, token)
-      elsif (! Options["degeneration"])           # no degeneration
+      elsif (! @options["degeneration"])           # no degeneration
         return nil
       else
         if (v = value(category, token[0 .. -2])) # cut last char
           return v 
         end
-        token = token.gsub(Regexp::compile("[#{Options['mark-in-token']}]"), '')
+        token = token.gsub(Regexp::compile("[#{@options['mark-in-token']}]"), '')
         if (v = value(category, token))
           return v 
         end
@@ -460,7 +464,7 @@ EOM
     def show_new_token(db)
       db.each_ct do |(category, token)|
         if (! value(category, token) || (value(category, token) == 0))
-          Options["message-fh"].printf("new %s %s\n", category, token)
+          @options["message-fh"].printf("new %s %s\n", category, token)
         end
       end
     end
@@ -590,7 +594,8 @@ EOM
   class TokenDBM
     include TokenAccess
     MAGIC = "###"
-    def initialize(language, ext)
+    def initialize(options, language, ext)
+      @options = options
       @dbm = nil                  # SDBM not Hash
       @dirty = nil                # not used. for TokenAccess
       @lockfh = nil
@@ -715,8 +720,8 @@ EOM
         @file_count = 0
         set(".internal", "file_count", @file_count)
       end
-      if (Options["verbose"])
-        Options["message-fh"].printf("open %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("open %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
       end
       @dirty = false
     end
@@ -724,12 +729,12 @@ EOM
     def close
       dirty = @dirty
       set(".internal", "file_count", @file_count) if (dirty)
-      if (Options["verbose"])
-        Options["message-fh"].printf("close %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("close %s %d tokens %d mails by %d.\n", @filename, @dbm.length, @file_count, Process::pid)
       end
-      if (Options["debug"] && dirty)
+      if (@options["debug"] && dirty)
         key_cts.sort.each do |(c, t)|
-          Options["message-fh"].printf("%s %s %s %f\n", @filename, c, t, value(c, t))
+          @options["message-fh"].printf("%s %s %s %f\n", @filename, c, t, value(c, t))
         end
       end
       @dbm.close
@@ -745,9 +750,9 @@ EOM
   end
   
   class TokenSDBM < TokenDBM
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + SDBM_ext
-      @lockfile = Options["homedir"] + language + ext + SDBM_ext + Lock_ext
+    def initialize(options, language, ext)
+      @filename = options["homedir"] + language + ext + SDBM_ext
+      @lockfile = options["homedir"] + language + ext + SDBM_ext + Lock_ext
       super
     end
     def clear
@@ -759,8 +764,8 @@ EOM
       rescue
       end
       @dbm = open_dbm(@filename, 0600)
-      if (Options["verbose"])
-        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
     def open_dbm(filename, mode)
@@ -769,9 +774,10 @@ EOM
   end
   
   class TokenGDBM < TokenDBM
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + GDBM_ext
-      @lockfile = Options["homedir"] + language + ext + GDBM_ext + Lock_ext
+    def initialize(options, language, ext)
+      @options = options
+      @filename = @options["homedir"] + language + ext + GDBM_ext
+      @lockfile = @options["homedir"] + language + ext + GDBM_ext + Lock_ext
       super
     end
     def clear
@@ -782,8 +788,8 @@ EOM
       rescue
       end
       @dbm = open_dbm(@filename, 0600)
-      if (Options["verbose"])
-        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
     def open_dbm(filename, mode)
@@ -792,9 +798,9 @@ EOM
   end
   
   class TokenBDB1 < TokenDBM
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + BDB1_ext
-      @lockfile = Options["homedir"] + language + ext + BDB1_ext + Lock_ext
+    def initialize(options, language, ext)
+      @filename = options["homedir"] + language + ext + BDB1_ext
+      @lockfile = options["homedir"] + language + ext + BDB1_ext + Lock_ext
       super
     end
     def clear
@@ -805,8 +811,8 @@ EOM
       rescue
       end
       @dbm = open_dbm(@filename, 0600)
-      if (Options["verbose"])
-        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
     def open_dbm(filename, mode)
@@ -815,9 +821,9 @@ EOM
   end
 
   class TokenBDB < TokenDBM
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + BDB_ext
-      @lockfile = Options["homedir"] + language + ext + BDB_ext + Lock_ext
+    def initialize(options, language, ext)
+      @filename = options["homedir"] + language + ext + BDB_ext
+      @lockfile = options["homedir"] + language + ext + BDB_ext + Lock_ext
       super
     end
     def clear
@@ -828,8 +834,8 @@ EOM
       rescue
       end
       @dbm = open_dbm(@filename, 0600)
-      if (Options["verbose"])
-        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
     def open_dbm(filename, mode)
@@ -838,9 +844,9 @@ EOM
   end
 
   class TokenQDBM < TokenDBM
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + QDBM_ext
-      @lockfile = Options["homedir"] + language + ext + QDBM_ext + Lock_ext
+    def initialize(options, language, ext)
+      @filename = options["homedir"] + language + ext + QDBM_ext
+      @lockfile = options["homedir"] + language + ext + QDBM_ext + Lock_ext
       super
     end
     def value(category, token)
@@ -875,8 +881,8 @@ EOM
       rescue
       end
       @dbm = open_dbm(@filename, 0600)
-      if (Options["verbose"])
-        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      if (@options["verbose"])
+        @options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
     def open_dbm(filename, mode)
@@ -891,10 +897,10 @@ EOM
       if (str)
         case str
         when reg_char_ja
-          Options["message-fh"].printf("lang ja header char_ja\n") if (Options["debug"])
+          @options["message-fh"].printf("lang ja header char_ja\n") if (@options["debug"])
           return ["ja", nil]
         when reg_jis
-          Options["message-fh"].printf("lang ja header jis\n") if (Options["debug"])
+          @options["message-fh"].printf("lang ja header jis\n") if (@options["debug"])
           return ["ja", "jis"]
         end
       end
@@ -928,20 +934,20 @@ EOM
 
       case str.gsub(/\s/, '')
       when reg_utf8
-        Options["message-fh"].printf("lang ja utf8\n") if (Options["debug"])
+        @options["message-fh"].printf("lang ja utf8\n") if (@options["debug"])
         return ["ja", "utf8"]
       when reg_jis
-        Options["message-fh"].printf("lang ja jis\n") if (Options["debug"])
+        @options["message-fh"].printf("lang ja jis\n") if (@options["debug"])
         return ["ja", "jis"]
       when reg_sjis
-        Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
+        @options["message-fh"].printf("lang ja sjis\n") if (@options["debug"])
         return ["ja", "sjis"]
       when reg_euc
         if (gb18030_possible)
-          Options["message-fh"].printf("lang ja gb18030\n") if (Options["debug"])
+          @options["message-fh"].printf("lang ja gb18030\n") if (@options["debug"])
           return ["ja", "gb18030"]
         else
-          Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
+          @options["message-fh"].printf("lang ja euc\n") if (@options["debug"])
           return ["ja", "euc"]
         end
       end
@@ -955,10 +961,10 @@ EOM
     header_buf = Array::new
     if ((buf[0] !~ /\Afrom\s+(\S+)/i) && # this isn't mail
         (buf[0] !~ /\A(\S+):/))
-      if (Options["max-line"] <= 0)
+      if (@options["max-line"] <= 0)
         return [headers, buf, lang]
       else
-        return [headers, buf[0 .. Options["max-line"]], lang]
+        return [headers, buf[0 .. @options["max-line"]], lang]
       end
     end
     
@@ -999,37 +1005,36 @@ EOM
       headers["content-type"] = $1
     end
     
-    if (Options["max-line"] <= 0)
+    if (@options["max-line"] <= 0)
       return [headers, buf, lang]
     else
-      return [headers, buf[0 .. Options["max-line"]], lang]
+      return [headers, buf[0 .. @options["max-line"]], lang]
     end
   end
   
   
   class Jtokenizer
-    @@method = nil
-    @@m = nil
-    def self.set(method)
+    def initialize(method)
       case method
       when "bigram"
-        @@method = Proc::new {|s| self.bigram(s)}
+        @method = Proc::new {|s| bigram(s)}
       when "block"
-        @@method = Proc::new {|s| self.block(s)}
+        @method = Proc::new {|s| block(s)}
       when "mecab"
-        @@method = Proc::new {|s| self.mecab(s)}
-        @@m = MeCab::Tagger.new([$0, "-Ochasen"])
+        @method = Proc::new {|s| mecab(s)}
+        @m = MeCab::Tagger.new([$0, "-Ochasen"])
       when "chasen"
         Chasen.getopt("-F", '%H %m\n', "-j")
-        @@method = Proc::new {|s| self.chasen(s)}
+        @method = Proc::new {|s| chasen(s)}
       when "kakasi"
-        @@method = Proc::new {|s| self.kakasi(s)}
+        @method = Proc::new {|s| kakasi(s)}
       else
         raise
       end
     end
-    def self.split(str)
-      @@method.call(str)
+
+    def split(str)
+      @method.call(str)
     end
     
     Reg_kanji = Regexp::compile("[\xb0\xa1-\xf4\xa4]+", nil, 'e')
@@ -1037,7 +1042,7 @@ EOM
     Reg_kanji_katakana = Regexp::compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
     Reg_not_kanji_katakana = Regexp::compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]", nil, 'e')
     
-    def self.kakasi(str)
+    def kakasi(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
       if (str =~ /\A +\z/)
         return []
@@ -1052,13 +1057,13 @@ EOM
       return array
     end
     
-    def self.mecab(str)
+    def mecab(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
       if (str =~ /\A +\z/)
         return []
       end
       array = Array::new
-      node = @@m.parseToNode(str)
+      node = @m.parseToNode(str)
       while (node.hasNode == 1)
         token = node.getSurface
         hinshi = node.getFeature.split(/,/)[0]
@@ -1078,7 +1083,7 @@ EOM
       return array
     end
     
-    def self.chasen(str)
+    def chasen(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
       if (str =~ /\A +\z/)
         return []
@@ -1103,13 +1108,13 @@ EOM
       return array
     end
     
-    def self.block(str)
+    def block(str)
       tokens = str.scan(Reg_kanji)
       tokens.concat(str.scan(Reg_katakana))
       return tokens
     end
     
-    def self.bigram(str)
+    def bigram(str)
       tokens = Array::new
       
       str.scan(Reg_kanji).each do |token|
@@ -1132,7 +1137,7 @@ EOM
     (lang, code) = get_lang_from_headers(headers) if (! lang)
 
     head_db = TokenDB::new(lang)
-    reg_token = Regexp::compile("\\b\\d[\\d\\.]+\\d\\b|[\\w#{Options['mark-in-token']}]+")
+    reg_token = Regexp::compile("\\b\\d[\\d\\.]+\\d\\b|[\\w#{@options['mark-in-token']}]+")
     
     if (headers["received"])
       str = headers["received"] 
@@ -1146,6 +1151,12 @@ EOM
       str += " " + foraddress if foraddress
       headers["received"] = str
     end
+
+#    if (headers["domainkey-signature"])
+#      headers["domainkey-signature"] = headers["domainkey-signature"].sub(/b=[^:;\s]+/, '')
+#    end
+
+#    "authentication-results", "domainkey-signature"
     headers.each do |header, content|
       case header
       when "ufrom", "from", "to", "cc", "subject", "reply-to", "return-path",
@@ -1154,7 +1165,7 @@ EOM
           content.gsub!(/=\?utf\-8\?([bq])\?(\S*)\?=/i) do |s|
             b_or_q = $1
             encoded_str = $2
-            if (Options["utf-8"])
+            if (@options["utf-8"])
               if (b_or_q =~ /q/i)
                 decoded_str = encoded_str.unpack("M*").to_s 
               else
@@ -1171,12 +1182,12 @@ EOM
         end
         content.scan(reg_token).each do |token|
           head_db.add_scalar(header, token, 1) if (token.length < 20)
-          Options["message-fh"].printf("tokenizer %s %s\n", header, token) if (Options["debug"])
+          @options["message-fh"].printf("tokenizer %s %s\n", header, token) if (@options["debug"])
         end
         if (lang == "ja")
-          Jtokenizer::split(content.gsub(/\s+/, '')).each do |token|
+          @jtokenizer.split(content.gsub(/\s+/, '')).each do |token|
             head_db.add_scalar(header, token, 1)
-            Options["message-fh"].printf("tokenizer %s %s\n", header, token) if (Options["debug"])
+            @options["message-fh"].printf("tokenizer %s %s\n", header, token) if (@options["debug"])
           end
         end
       end
@@ -1201,7 +1212,7 @@ EOM
     body_db.message_id = headers["message-id"] || "-"
     
     sub_head_db = TokenDB::new(lang)
-    main_head_db = tokenize_headers(lang, headers) if (Options["use-header"])
+    main_head_db = tokenize_headers(lang, headers) if (@options["use-header"])
     lang = main_head_db.language if main_head_db
     
     found_html_part = false
@@ -1224,11 +1235,11 @@ EOM
         end
       end
       (headers, buf, lang) = get_headers(buf, lang)
-      db = tokenize_headers(lang, headers) if (Options["use-header"])
+      db = tokenize_headers(lang, headers) if (@options["use-header"])
       sub_head_db.add_db(db)
     end
     
-    if (Options["ignore-plain-text-part"] && found_html_part)
+    if (@options["ignore-plain-text-part"] && found_html_part)
       html_bodies.each do |db|
         body_db.add_db(db)
       end
@@ -1241,8 +1252,8 @@ EOM
       end
     end
     
-    body_db.add_db(main_head_db) if (Options["use-header"])
-    body_db.add_db(sub_head_db) if (Options["use-header"])
+    body_db.add_db(main_head_db) if (@options["use-header"])
+    body_db.add_db(sub_head_db) if (@options["use-header"])
     body_db.file_count = 1
     body_db.time = Time::new
     body_db.language = "C" if (! body_db.language)
@@ -1262,7 +1273,7 @@ EOM
   end
 
   def decode_character_reference2u(str)
-    if (Options["utf-8"])
+    if (@options["utf-8"])
       newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
         hex_or_dec = $1
         if (hex_or_dec =~ /^x(.*)/i)
@@ -1279,7 +1290,7 @@ EOM
   end
 
   def decode_character_reference(str, lang)
-    if (Options["utf-8"])
+    if (@options["utf-8"])
       newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
         hex_or_dec = $1
         if (hex_or_dec =~ /^x(.*)/i)
@@ -1307,7 +1318,7 @@ EOM
     body_hash = DBHash::new(0)
     url_hash = DBHash::new(0)
     
-    reg_token = Regexp::compile("(?:http:|www)[\\w\\-\\.\\/@%:\?=]+|[\\w\\-\\.]+@[\\w\\-\\.]+|\\b\\d[\\d\\.]+\\d\\b|[\\w#{Options['mark-in-token']}]+")
+    reg_token = Regexp::compile("(?:http:|www)[\\w\\-\\.\\/@%:\?=]+|[\\w\\-\\.]+@[\\w\\-\\.]+|\\b\\d[\\d\\.]+\\d\\b|[\\w#{@options['mark-in-token']}]+")
     reg_url = Regexp::compile('(^http:|https:|^www|@)')
     reg_token2 = Regexp::compile('\b\d[\d\.]+\d\b|[\w%]+')
     reg_noret = Regexp::compile('[\r\n]*\z')
@@ -1317,12 +1328,12 @@ EOM
         token.scan(reg_token2).each do |token2|
           if (token2.length < 20)
             url_hash[token2] += 1 
-            Options["message-fh"].printf("tokenizer %s %s\n", "url", token2) if (Options["debug"])
+            @options["message-fh"].printf("tokenizer %s %s\n", "url", token2) if (@options["debug"])
           end
         end
       elsif (token.length < 20)
         body_hash[token] += 1 
-        Options["message-fh"].printf("tokenizer C %s %s\n", "body", token) if (Options["debug"])
+        @options["message-fh"].printf("tokenizer C %s %s\n", "body", token) if (@options["debug"])
       end
     end
     
@@ -1332,9 +1343,9 @@ EOM
       str.gsub!(Regexp::compile("(\\r?\\n){2,}", nil, 'e'), ' ') # keep multiple newline as space
       str.gsub!(Regexp::compile("[\\r\\n]+", nil, 'e'), '') # delete newline
       str.split.each do |s|
-        Jtokenizer::split(s).each do |token|
+        @jtokenizer.split(s).each do |token|
           body_hash[token] += 1
-          Options["message-fh"].printf("tokenizer ja %s %s\n", "body", token) if (Options["debug"])
+          @options["message-fh"].printf("tokenizer ja %s %s\n", "body", token) if (@options["debug"])
         end
       end
     end
@@ -1399,13 +1410,13 @@ EOM
     
     if (lang == "ja")
       if (code == "utf8")
-        if (Options["utf-8"])
+        if (@options["utf-8"])
           str = Iconv.u2eucjp(str)
         else
           lang = "C"              # can't use iconv / stop ja tokenizer
         end
       elsif (code == "gb18030")
-        if (Options["utf-8"])
+        if (@options["utf-8"])
           str = Iconv.gb180302eucjp(str)
         else
           lang = "C"
@@ -1439,7 +1450,7 @@ EOM
       # remove <span style="DISPLAY: none..>
       str.gsub!(/(<span[^<>]*display\s*:\s*none[^>]*>)([^<>]*)(<\/span>)/im, '')
       
-      if (Options["ignore-after-last-atag"])
+      if (@options["ignore-after-last-atag"])
         if (str =~ /\A(.*)<\/a>/im)
           str = $1
         end
@@ -1447,7 +1458,10 @@ EOM
       
       
       # remove salad after body or html
-      if (str =~ Regexp::compile('\A(.*)</(body|html)>[^<>]*?\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n')) 
+      if (str =~ Regexp::compile('\A(.*)</html>[^<>]*?\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n')) 
+        str = $1
+      end
+      if (str =~ Regexp::compile('\A(.*)</body>[^<>]*?\z', Regexp::MULTILINE | Regexp::IGNORECASE, 'n')) 
         str = $1
       end
       str.gsub!(Regexp::compile('<[^>]*>', Regexp::MULTILINE, 'n')) do |t|
@@ -1471,7 +1485,7 @@ EOM
     (body_hash, url_body_hash) = tokenize_str(body_str, lang)
     (tag_hash, url_tag_hash) = tokenize_str(tag_str, lang)
     
-    if (! body_hash.empty? && Options["use-body"])
+    if (! body_hash.empty? && @options["use-body"])
       db.add_hash({"body" => body_hash})
     end
     if (! tag_hash.empty?)
@@ -1489,29 +1503,30 @@ EOM
   end
   
   class Probability               # for each lang
-    def initialize(lang)
-      @filename = Options["homedir"] + lang + Prob_ext
-      case (Options["db"])
+    def initialize(options, lang)
+      @options = options
+      @filename = @options["homedir"] + lang + Prob_ext
+      case (@options["db"])
       when "sdbm"
-        @clean = TokenSDBM::new(lang, Clean_ext)
-        @spam = TokenSDBM::new(lang, Spam_ext)
-        @prob = TokenSDBM::new(lang, Prob_ext)
+        @clean = TokenSDBM::new(@options, lang, Clean_ext)
+        @spam = TokenSDBM::new(@options, lang, Spam_ext)
+        @prob = TokenSDBM::new(@options, lang, Prob_ext)
       when "gdbm"
-        @clean = TokenGDBM::new(lang, Clean_ext)
-        @spam = TokenGDBM::new(lang, Spam_ext)
-        @prob = TokenGDBM::new(lang, Prob_ext)
+        @clean = TokenGDBM::new(@options, lang, Clean_ext)
+        @spam = TokenGDBM::new(@options, lang, Spam_ext)
+        @prob = TokenGDBM::new(@options, lang, Prob_ext)
       when "bdb1"
-        @clean = TokenBDB1::new(lang, Clean_ext)
-        @spam = TokenBDB1::new(lang, Spam_ext)
-        @prob = TokenBDB1::new(lang, Prob_ext)
+        @clean = TokenBDB1::new(@options, lang, Clean_ext)
+        @spam = TokenBDB1::new(@options, lang, Spam_ext)
+        @prob = TokenBDB1::new(@options, lang, Prob_ext)
       when "bdb"
-        @clean = TokenBDB::new(lang, Clean_ext)
-        @spam = TokenBDB::new(lang, Spam_ext)
-        @prob = TokenBDB::new(lang, Prob_ext)
+        @clean = TokenBDB::new(@options, lang, Clean_ext)
+        @spam = TokenBDB::new(@options, lang, Spam_ext)
+        @prob = TokenBDB::new(@options, lang, Prob_ext)
       when "qdbm"
-        @clean = TokenQDBM::new(lang, Clean_ext)
-        @spam = TokenQDBM::new(lang, Spam_ext)
-        @prob = TokenQDBM::new(lang, Prob_ext)
+        @clean = TokenQDBM::new(@options, lang, Clean_ext)
+        @spam = TokenQDBM::new(@options, lang, Spam_ext)
+        @prob = TokenQDBM::new(@options, lang, Prob_ext)
       end
       
       @language = lang
@@ -1531,7 +1546,7 @@ EOM
   end
   
   class Graham < Probability
-    def initialize(lang)
+    def initialize(options, lang)
       @spam_cutoff = 0.9
       @default_probability = 0.4
       super
@@ -1559,7 +1574,7 @@ EOM
       
       probs = prob_db.values.sort {|a, b| (b - 0.5).abs <=> (a - 0.5).abs}[0, 15]
       
-      if (Options["verbose"])
+      if (@options["debug"])
         prob_array = Array::new
         prob_db.each_ct do |c, t|
           prob_array.push([[c, t], prob_db.value(c, t)])
@@ -1568,7 +1583,7 @@ EOM
         prob_array = prob_array[0, 15]
         prob_array.sort! {|a, b| b[1] <=> a[1]}
         prob_array.each do |k, v|
-          Options["message-fh"].printf("word probability %s %s %f\n", k[0], k[1], v)
+          @options["message-fh"].printf("word probability %s %s %f\n", k[0], k[1], v)
         end
       end
       
@@ -1644,7 +1659,7 @@ EOM
   end
   
   class Robinson < Probability
-    def initialize(lang)
+    def initialize(options, lang)
       @robx_max = 1
       @min_dev = 0.1
       @spam_cutoff = 0.582
@@ -1761,7 +1776,7 @@ EOM
           count += c
           pminus = pminus * FLOAT::new(1.0 - probability, c)
           qminus = qminus * FLOAT::new(probability, c)
-          Options["message-fh"].printf("word probability %s %s %d %f\n", category, token, c, probability) if (Options["debug"])
+          @options["message-fh"].printf("word probability %s %s %d %f\n", category, token, c, probability) if (@options["debug"])
         end
       end
       
@@ -1781,7 +1796,7 @@ EOM
   
   
   class RobinsonFisher < Robinson
-    def initialize(lang)
+    def initialize(options, lang)
       super
       @spam_cutoff = 0.95
     end
@@ -2110,16 +2125,22 @@ EOM
   end
 
   class Mbox
-    def initialize(fh)
+    def initialize(options, fh)
       @buf = Array::new
+      @options = options
       @fh = fh
     end
     def read
-      if (! Options["mbox"])
+      if (! @options["mbox"])
         if (@fh.eof?)
           return nil
         else
-          return @fh.readlines
+          buf = @fh.readlines
+          if ((buf.length == 1) && (buf.last =~ /\r\z/))
+            return buf.last.scan(/.*?\r/)
+          else
+            return buf
+          end
         end
       end
       
@@ -2145,7 +2166,7 @@ EOM
     end
   end
   
-  def update_token_db_one(db, command=Options)
+  def update_token_db_one(db, command=@options)
     maintenance_command = ""
     maintenance_command += "c" if (command["add-clean"])
     maintenance_command += "s" if (command["add-spam"])
@@ -2153,21 +2174,21 @@ EOM
     maintenance_command += "S" if (command["sub-spam"])
     maintenance_command = "-" if (maintenance_command == "")
     
-    show_process(db, maintenance_command) if (Options["show-process"])
+    show_process(db, maintenance_command) if (@options["show-process"])
     
     if (command["add-clean"] || command["import-clean"])
-      DB[db.language].clean.show_new_token(db) if (Options["show-new-token"])
-      DB[db.language].clean.add_db(db)
+      @db_hash[db.language].clean.show_new_token(db) if (@options["show-new-token"])
+      @db_hash[db.language].clean.add_db(db)
     end
     if (command["add-spam"] || command["import-spam"])
-      DB[db.language].spam.show_new_token(db) if (Options["show-new-token"])
-      DB[db.language].spam.add_db(db)
+      @db_hash[db.language].spam.show_new_token(db) if (@options["show-new-token"])
+      @db_hash[db.language].spam.add_db(db)
     end
     if (command["sub-clean"])
-      DB[db.language].clean.sub_db(db)
+      @db_hash[db.language].clean.sub_db(db)
     end
     if (command["sub-spam"])
-      DB[db.language].spam.sub_db(db)
+      @db_hash[db.language].spam.sub_db(db)
     end
   end
   
@@ -2175,6 +2196,7 @@ EOM
     dbs = DBHash::new
     Languages.each do |lang|
       dbs[lang] = TokenDB::new(lang)
+      dbs[lang].time = Time::new
     end
     while (str = fh.gets)
       str.chomp!
@@ -2198,35 +2220,35 @@ EOM
   def update_token_dbs(files)
     dbs = Array::new
     Languages.each do |lang|
-      DB[lang].clean.open("rw")
-      DB[lang].spam.open("rw")
+      @db_hash[lang].clean.open("rw")
+      @db_hash[lang].spam.open("rw")
     end
     
-    if (Options["imap"])
-      if (Options["ssl"])
-        if (Options["ssl-cert"])
+    if (@options["imap"])
+      if (@options["ssl"])
+        if (@options["ssl-cert"])
           verify_mode = OpenSSL::SSL::VERIFY_PEER
         else
           verify_mode = nil
         end
-        imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"], Options["ssl"], Options["ssl-cert"], verify_mode)
+        imap = Net::IMAP::new(@options["imap-server"], @options["imap-port"], @options["ssl"], @options["ssl-cert"], verify_mode)
       else
-        imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+        imap = Net::IMAP::new(@options["imap-server"], @options["imap-port"])
       end
-      imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+      imap.auto_authenticate(@options["imap-auth"], @options["imap-user"], @options["imap-password"], @options["imap-auth-preference"])
 
       files.each do |mailbox|
         target_mailbox = mailbox
-        target_mailbox = Options["imap-folder-clean"] if (Options["add-clean"] && Options["imap-folder-clean"])
-        target_mailbox = Options["imap-folder-spam"] if (Options["add-spam"] && Options["imap-folder-spam"])
+        target_mailbox = @options["imap-folder-clean"] if (@options["add-clean"] && @options["imap-folder-clean"])
+        target_mailbox = @options["imap-folder-spam"] if (@options["add-spam"] && @options["imap-folder-spam"])
         uids = imap_get_target_uids(imap, mailbox)
         uids.each do |uid|
-          imapm = IMAPMessage::new(imap, uid)
+          imapm = IMAPMessage::new(@options, imap, uid)
           imapm.fetch_rfc822
           db = tokenize_buf(imapm.buf)
           db.filename = uid
           update_token_db_one(db)
-          updated = imapm.insert_rfc822_headers!((Options["add-spam"] || Options["sub-clean"]), nil)
+          updated = imapm.insert_rfc822_headers!((@options["add-spam"] || @options["sub-clean"]), nil)
           if (updated)
             imapm.append(target_mailbox)
             imapm.set_delete_flag
@@ -2241,20 +2263,20 @@ EOM
     else
       files.each do |file|
         open_ro(file) do |fh|
-          if (Options["import-clean"] || Options["import-spam"])
+          if (@options["import-clean"] || @options["import-spam"])
             imported_dbs = read_exported_text(fh)
             imported_dbs.each do |lang, db|
               update_token_db_one(db)
             end
           else
-            mbox = Mbox::new(fh)
+            mbox = Mbox::new(@options, fh)
             while (buf = mbox.read)
               db = tokenize_buf(buf)
               db.filename = file
               dbs.push(db)
-              if (Options["pipe"])
-                insert_headers!(buf, (Options["add-spam"] || Options["sub-clean"]), nil) 
-                print buf
+              if (@options["pipe"])
+                insert_headers!(buf, (@options["add-spam"] || @options["sub-clean"]), nil) 
+                @options["pipe-fh"].print buf
               end
               update_token_db_one(db)
             end
@@ -2265,10 +2287,10 @@ EOM
     
     slimed = false
     Languages.each do |lang|
-      slimed |= DB[lang].clean.check_size(Options["max-mail"], Options["min-mail"])
-      slimed |= DB[lang].spam.check_size(Options["max-mail"], Options["min-mail"])
-      DB[lang].clean.close
-      DB[lang].spam.close
+      slimed |= @db_hash[lang].clean.check_size(@options["max-mail"], @options["min-mail"])
+      slimed |= @db_hash[lang].spam.check_size(@options["max-mail"], @options["min-mail"])
+      @db_hash[lang].clean.close
+      @db_hash[lang].spam.close
     end
     dbs.clear if (slimed) # disable incremental
     return dbs
@@ -2281,8 +2303,8 @@ EOM
       updated_langs.push(token_db.language)
     end
     updated_langs.uniq.each do |lang|
-      DB[lang].clean.open("rw")
-      DB[lang].spam.open("rw")
+      @db_hash[lang].clean.open("rw")
+      @db_hash[lang].spam.open("rw")
     end
     
     command["sub-clean"] = false
@@ -2303,18 +2325,18 @@ EOM
     
     slimed = false
     updated_langs.uniq.each do |lang|
-      slimed |= DB[lang].clean.check_size(Options["max-mail"], Options["min-mail"])
-      slimed |= DB[lang].spam.check_size(Options["max-mail"], Options["min-mail"])
+      slimed |= @db_hash[lang].clean.check_size(@options["max-mail"], @options["min-mail"])
+      slimed |= @db_hash[lang].spam.check_size(@options["max-mail"], @options["min-mail"])
     end
     token_dbs.clear if (slimed)   # can't use incremental mode
     
     updated_langs.uniq.each do |lang|
-      DB[lang].update_probability(token_dbs)
+      @db_hash[lang].update_probability(token_dbs)
     end
     
     updated_langs.uniq.each do |lang|
-      DB[lang].clean.close
-      DB[lang].spam.close
+      @db_hash[lang].clean.close
+      @db_hash[lang].spam.close
     end
   end
   
@@ -2348,7 +2370,7 @@ EOM
       seqs = nil
     end
     imap.select(mailbox)
-    if (Options["imap-fetch-unseen"])
+    if (@options["imap-fetch-unseen"])
       if (seqs)
         uids = imap.uid_search(["UNSEEN", seqs])
       else
@@ -2361,7 +2383,7 @@ EOM
         uids = imap.uid_search(["ALL"])
       end
     end
-    if (Options["imap-fetch-unflagged"])
+    if (@options["imap-fetch-unflagged"])
       uids = uids - imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
     end
     return uids
@@ -2369,7 +2391,8 @@ EOM
   
   class IMAPMessage
     include Bsutil
-    def initialize(imap, uid=nil)
+    def initialize(options, imap, uid=nil)
+      @options = options
       @seqno = nil
       @seen = nil
       @uid = uid
@@ -2379,7 +2402,7 @@ EOM
     attr_accessor :seqno, :uid, :imap, :buf, :seen
     
     def fetch_rfc822
-      #    Options["message-fh"].printf("fetch_rfc822 %d\n", @uid) if (Options["verbose"])
+      #    @options["message-fh"].printf("fetch_rfc822 %d\n", @uid) if (@options["verbose"])
       fetched = @imap.uid_fetch(@uid, ["RFC822", "FLAGS"])
       @seqno = fetched[0].seqno
       @buf = fetched[0].attr["RFC822"].split("\n")
@@ -2394,7 +2417,7 @@ EOM
     end
     
     def insert_rfc822_header!(header, content)
-      #    Options["message-fh"].printf("insert_rfc822_header %d %s %s\n", @uid, header, content) if (Options["verbose"])
+      #    @options["message-fh"].printf("insert_rfc822_header %d %s %s\n", @uid, header, content) if (@options["verbose"])
       insert_header!(@buf, header, content)
     end
     
@@ -2402,7 +2425,7 @@ EOM
       @buf.map! do |str|
         str.sub(/[\r\n]*\z/, "\r\n")
       end
-      #    Options["message-fh"].printf("append %d %s\n", @uid, mailbox) if (Options["verbose"])    
+      # @options["message-fh"].printf("append %d %s\n", @uid, mailbox) if (@options["verbose"])    
       if (@seen)
         @imap.append(mailbox, @buf.join, [:Seen])
       else
@@ -2411,31 +2434,31 @@ EOM
     end
     
     def copy(mailbox)
-      #    Options["message-fh"].printf("copy %d %s\n", @uid, mailbox) if (Options["verbose"])    
+      #    @options["message-fh"].printf("copy %d %s\n", @uid, mailbox) if (@options["verbose"])    
       @imap.uid_copy(@uid, mailbox)
     end
     
     def set_delete_flag
-      #    Options["message-fh"].printf("set_delete_flag %d\n", @uid) if (Options["verbose"])    
+      #    @options["message-fh"].printf("set_delete_flag %d\n", @uid) if (@options["verbose"])    
       @imap.uid_store(@uid, "+FLAGS", [:Deleted])
     end
     
     def reset_seen_flag
-      #    Options["message-fh"].printf("reset_seen_flag %d\n", @uid) if (Options["verbose"])    
+      #    @options["message-fh"].printf("reset_seen_flag %d\n", @uid) if (@options["verbose"])    
       @seen = false
       @imap.uid_store(@uid, "-FLAGS", [:Seen])
     end
-  end
+  end                           # end of class IMAPMessage
   
   def socket_send_rec(command, socket)
     buf = Array::new
     if (command)
-      Options["message-fh"].printf("send %s %s", socket, command.sub(/\APASS.*/i, "PASS ********")) if (Options["debug"])
+      @options["message-fh"].printf("send %s %s", socket, command.sub(/\APASS.*/i, "PASS ********")) if (@options["debug"])
       socket.write_timeout(command) # pass command to pop-server
     end
     response = socket.gets_timeout # get response from pop-server
     buf.push(response)
-    Options["message-fh"].printf("resp %s %s", socket, response.sub(/\APASS.*/i, "PASS ********")) if (Options["debug"])
+    @options["message-fh"].printf("resp %s %s", socket, response.sub(/\APASS.*/i, "PASS ********")) if (@options["debug"])
     if ((response =~ /\A\+OK/) &&
         ((command =~ /(RETR|TOP|CAPA)/i) ||
          (command =~ /(UIDL|LIST)[^\d]*\z/i)))
@@ -2449,7 +2472,7 @@ EOM
   
   def pop_proxy_multi(pop_proxy_sets)
     trap("SIGINT") do
-      Options["message-fh"].printf("SIGINT received\n") if (Options["verbose"])
+      @options["message-fh"].printf("SIGINT received\n") if (@options["verbose"])
       @threads.each do |thread|   # kill child threads
         Thread::kill(thread)
       end
@@ -2507,18 +2530,18 @@ EOM
     gs = TCPserver.open(pop_proxy_if, pop_proxy_port)
     addr = gs.addr
     addr.shift
-    printf("pop_proxy is on %s\n", addr.join(":")) if (Options["verbose"])
+    @options["message-fh"].printf("pop_proxy is on %s\n", addr.join(":")) if (@options["verbose"])
     while true
       Thread::start(gs.accept) do |pop_proxy_socket| # start grandchild threads
-        print(pop_proxy_socket, " is accepted\n") if (Options["verbose"])
+        @options["message-fh"].print(pop_proxy_socket, " is accepted\n") if (@options["verbose"])
         begin
           pop_socket = nil
           timeout(SOCKET_TIMEOUT) do
             pop_socket = TCPsocket.open(pop_server, pop_port)
           end
-          print(pop_socket, " is connected\n") if (Options["verbose"])
+          @options["message-fh"].print(pop_socket, " is connected\n") if (@options["verbose"])
 
-          pop_socket = get_ssl_socket(pop_socket, Options["ssl-cert"]) if (Options["ssl"])
+          pop_socket = get_ssl_socket(pop_socket, @options["ssl-cert"]) if (@options["ssl"])
           
           hello = socket_send_rec(nil, pop_socket)[0]
           hello.sub!(/(.*)\r/, "\\1(pop_proxy by bsfilter)\r")
@@ -2529,7 +2552,7 @@ EOM
             if (command =~ /\ARETR\s+(\d+)/i)
               n = $1
               if (sizes[n] && 
-                  (0 < Options["pop-max-size"]) && (Options["pop-max-size"] < sizes[n]))
+                  (0 < @options["pop-max-size"]) && (@options["pop-max-size"] < sizes[n]))
                 pop_bypass_large_mail(command, pop_socket, pop_proxy_socket)
                 next
               end
@@ -2540,15 +2563,15 @@ EOM
             elsif ((command =~ /\A(TOP|RETR)/i) && (response[0] =~ /\A\+OK/))
               buf = response[1..-1].dup
               token_db = tokenize_buf(buf)
-              DB[token_db.language].prob.open("r")
-              DB[token_db.language].get_combined_probability(token_db)
-              DB[token_db.language].prob.close
-              if (Options["auto-update"])
+              @db_hash[token_db.language].prob.open("r")
+              @db_hash[token_db.language].get_combined_probability(token_db)
+              @db_hash[token_db.language].prob.close
+              if (@options["auto-update"])
                 auto_update([token_db])
-              elsif (Options["show-process"])
+              elsif (@options["show-process"])
                 show_process(token_db, "-")
               end
-              Options["message-fh"].printf("combined probability %f\n", token_db.probability) if (Options["verbose"])
+              @options["message-fh"].printf("combined probability %f\n", token_db.probability) if (@options["verbose"])
               insert_headers!(buf, token_db.spam_flag, token_db.probability)
               response[1..-1] = buf
             end
@@ -2558,7 +2581,7 @@ EOM
               break
             elsif ((command =~ /\AUSER\s*(\S*)\r/) &&
                    (pop_user && pop_user != $1))
-              Options["message-fh"].printf("username unmatch error\n")
+              @options["message-fh"].printf("username unmatch error\n")
               pop_proxy_socket.write("-ERR unregistered user\r\n") # return response to MUA              
               break
             else
@@ -2566,18 +2589,18 @@ EOM
             end
           end
         rescue TimeoutError
-          Options["message-fh"].printf("Timeout error %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (Options["verbose"])
+          @options["message-fh"].printf("Timeout error %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (@options["verbose"])
         rescue
-          Options["message-fh"].printf("pop exception caught %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (Options["verbose"])
-          p "#{$!}" if (Options["verbose"])
-          p "#{$@}" if (Options["debug"])
+          @options["message-fh"].printf("pop exception caught %s %s %s\n", pop_server, pop_port, pop_proxy_port) if (@options["verbose"])
+          p "#{$!}" if (@options["verbose"])
+          p "#{$@}" if (@options["debug"])
         ensure
           if (pop_proxy_socket && ! pop_proxy_socket.closed?)
-            print(pop_proxy_socket, " is gone\n") if (Options["verbose"])
+            @options["message-fh"].print(pop_proxy_socket, " is gone\n") if (@options["verbose"])
             pop_proxy_socket.close 
           end
           if (pop_socket && ! pop_socket.closed?)
-            print(pop_socket, " is gone\n") if (Options["verbose"])
+            @options["message-fh"].print(pop_socket, " is gone\n") if (@options["verbose"])
             pop_socket.close 
           end
         end
@@ -2627,48 +2650,48 @@ EOM
   
   def do_imap(command_line_args, token_dbs)
     ret_code = CODE_CLEAN
-    if (Options["ssl"])
-      if (Options["ssl-cert"])
+    if (@options["ssl"])
+      if (@options["ssl-cert"])
         verify_mode = OpenSSL::SSL::VERIFY_PEER
       else
         verify_mode = nil
       end
-      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"], Options["ssl"], Options["ssl-cert"], verify_mode)
+      imap = Net::IMAP::new(@options["imap-server"], @options["imap-port"], @options["ssl"], @options["ssl-cert"], verify_mode)
     else
-      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+      imap = Net::IMAP::new(@options["imap-server"], @options["imap-port"])
     end
-    imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+    imap.auto_authenticate(@options, @options["imap-auth"], @options["imap-user"], @options["imap-password"], @options["imap-auth-preference"])
 
-    imap.select(Options["imap-folder-clean"]) if (Options["imap-folder-clean"]) # only for check
-    imap.select(Options["imap-folder-spam"]) if (Options["imap-folder-spam"]) # only for check
+    imap.select(@options["imap-folder-clean"]) if (@options["imap-folder-clean"]) # only for check
+    imap.select(@options["imap-folder-spam"]) if (@options["imap-folder-spam"]) # only for check
     command_line_args.each do |mailbox|
       uids = imap_get_target_uids(imap, mailbox)
       uids.each do |uid|
-        imapm = IMAPMessage::new(imap, uid)
+        imapm = IMAPMessage::new(@options, imap, uid)
         imapm.fetch_rfc822
         token_db = tokenize_buf(imapm.buf)
         token_db.filename = uid
-        DB[token_db.language].get_combined_probability(token_db)
+        @db_hash[token_db.language].get_combined_probability(token_db)
         token_dbs.push(token_db)
-        Options["message-fh"].printf("combined probability %s %d %f\n", mailbox, imapm.seqno, token_db.probability) if (Options["verbose"])
-        if (Options["show-process"] && ! Options["auto-update"])
+        @options["message-fh"].printf("combined probability %s %d %f\n", mailbox, imapm.seqno, token_db.probability) if (@options["verbose"])
+        if (@options["show-process"] && ! @options["auto-update"])
           show_process(token_db, "-") 
         end
         updated = false
         target_mailbox = mailbox
         if (token_db.spam_flag)
-          target_mailbox = Options["imap-folder-spam"] if (Options["imap-folder-spam"])
+          target_mailbox = @options["imap-folder-spam"] if (@options["imap-folder-spam"])
           ret_code = CODE_SPAM
         else
-          target_mailbox = Options["imap-folder-clean"] if (Options["imap-folder-clean"])
+          target_mailbox = @options["imap-folder-clean"] if (@options["imap-folder-clean"])
         end
         updated = imapm.insert_rfc822_headers!(token_db.spam_flag, token_db.probability)
         if (updated)
-          imapm.reset_seen_flag if (Options["imap-reset-seen-flag"])
+          imapm.reset_seen_flag if (@options["imap-reset-seen-flag"])
           imapm.append(target_mailbox)
           imapm.set_delete_flag
         elsif (target_mailbox != mailbox)
-          imapm.reset_seen_flag if (Options["imap-reset-seen-flag"])
+          imapm.reset_seen_flag if (@options["imap-reset-seen-flag"])
           imapm.copy(target_mailbox)
           imapm.set_delete_flag
         end
@@ -2686,30 +2709,30 @@ EOM
     else
       file = command_line_args[0]
     end
-    if (Options["export-clean"])
+    if (@options["export-clean"])
       open_wo(file) do |fh|
         Languages.each do |lang|
-          DB[lang].clean.open("r")
-          DB[lang].clean.export(fh) if (DB[lang].clean.file_count > 0)
-          DB[lang].clean.close
+          @db_hash[lang].clean.open("r")
+          @db_hash[lang].clean.export(fh) if (@db_hash[lang].clean.file_count > 0)
+          @db_hash[lang].clean.close
         end
       end
     end
-    if (Options["export-spam"])
+    if (@options["export-spam"])
       open_wo(file) do |fh|
         Languages.each do |lang|
-          DB[lang].spam.open("r")
-          DB[lang].spam.export(fh) if (DB[lang].spam.file_count > 0)
-          DB[lang].spam.close
+          @db_hash[lang].spam.open("r")
+          @db_hash[lang].spam.export(fh) if (@db_hash[lang].spam.file_count > 0)
+          @db_hash[lang].spam.close
         end
       end
     end
-    if (Options["export-probability"])
+    if (@options["export-probability"])
       open_wo(file) do |fh|
         Languages.each do |lang|
-          DB[lang].prob.open("r")
-          DB[lang].prob.export(fh) if (DB[lang].prob.file_count > 0)
-          DB[lang].prob.close
+          @db_hash[lang].prob.open("r")
+          @db_hash[lang].prob.export(fh) if (@db_hash[lang].prob.file_count > 0)
+          @db_hash[lang].prob.close
         end
       end
     end
@@ -2717,26 +2740,26 @@ EOM
   
   def setup_imap
     Net::IMAP.class_eval <<EOM
-      def auto_authenticate(auth, user, password, auth_list=[])
+      def auto_authenticate(options, auth, user, password, auth_list=[])
         case auth.downcase
         when "loginc"
-          if (Options["verbose"])
-            Options["message-fh"].printf("try to login imap server for %s with login command\n", user)
+          if (options["verbose"])
+            options["message-fh"].printf("try to login imap server for %s with login command\n", user)
           end
           return login(user, password)
         when "auto"
           capa = capability
           auth_list.each do |auth|
             if (auth == "loginc")
-              return auto_authenticate("loginc", user, password)
+              return auto_authenticate(options, "loginc", user, password)
             elsif (capa.include?("AUTH=" + auth.upcase))
-              return auto_authenticate(auth, user, password)
+              return auto_authenticate(options, auth, user, password)
             end
           end
           raise sprintf("can't login imap server for %s with %s", user, auth_list)
         else
-          if (Options["verbose"])
-            Options["message-fh"].printf("try to login imap server for %s with authenticate %s\n", user, auth)
+          if (options["verbose"])
+            options["message-fh"].printf("try to login imap server for %s with authenticate %s\n", user, auth)
           end
           return authenticate(auth, user, password)
         end
@@ -2779,17 +2802,17 @@ EOM
 
     if (cert)
       if (FileTest::file?(cert))
-        print(cert, " is used for SSL ca_file\n") if (Options["verbose"])
+        @options["message-fh"].print(cert, " is used for SSL ca_file\n") if (@options["verbose"])
         context.ca_file = cert
       elsif (FileTest::directory?(cert))
-        print(cert, " is used for SSL ca_path\n") if (Options["verbose"])
+        @options["message-fh"].print(cert, " is used for SSL ca_path\n") if (@options["verbose"])
         context.ca_path = cert
       end
       context.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
     ssl = OpenSSL::SSL::SSLSocket::new(socket, context)
     ssl.connect
-    print(ssl, " is connected\n") if (Options["verbose"])
+    print(ssl, " is connected\n") if (@options["verbose"])
     return ssl
   end
 
@@ -2799,7 +2822,6 @@ EOM
       include VRTrayiconFeasible
       include VRMenuUseable
       LoadIcon = Win32API.new("user32", "LoadIcon", "II", "I")
-      EXCLAMATIONICON = LoadIcon.call(0, Options["icon_number"])
       
       def construct
         @traymenu = newPopupMenu
@@ -2811,8 +2833,9 @@ EOM
       def self_trayrbuttonup(iconid)
         showPopup @traymenu
       end
-      def into_trayicon
-        create_trayicon(EXCLAMATIONICON, "bsfilter release #{Release} revision #{Revision}", @mytrayicon)
+      def into_trayicon(icon_number)
+        create_trayicon(LoadIcon.call(0, icon_number),
+                        "bsfilter release #{Release} revision #{Revision}", @mytrayicon)
         myexstyle = self.exwinstyle
         myexstyle.ws_ex_toolwindow = true
         myexstyle.ws_ex_appwindow = false
@@ -2826,33 +2849,33 @@ EOM
 EOM
     frm = VRLocalScreen.newform(nil, nil, MyForm)
     frm.create
-    frm.into_trayicon
-      VRLocalScreen.messageloop
-      @threads.each do |thread|   # kill child threads
-        Thread::kill(thread)
-      end
+    frm.into_trayicon(@options["icon_number"])
+    VRLocalScreen.messageloop
+    @threads.each do |thread|   # kill child threads
+      Thread::kill(thread)
+    end
   end
     
   def do_pop
     Thread.abort_on_exception = true
-    Options["message-fh"].print "pop mode start ", Time::new.to_s, "\n" if (Options["verbose"])    
+    @options["message-fh"].print "pop mode start ", Time::new.to_s, "\n" if (@options["verbose"])    
     
-    if (Options["tasktray"])
+    if (@options["tasktray"])
       Thread::start do
         setup_tasktray 
       end
     end
     
-    if (Options["pop-proxy-set"])
-      pop_proxy_sets = Options["pop-proxy-set"].gsub(/\s/, '')
+    if (@options["pop-proxy-set"])
+      pop_proxy_sets = @options["pop-proxy-set"].gsub(/\s/, '')
     else
-      pop_proxy_sets = [Options["pop-server"], Options["pop-port"], 
-                        Options["pop-proxy-if"], Options["pop-proxy-port"], Options["pop-user"]].join(":")
+      pop_proxy_sets = [@options["pop-server"], @options["pop-port"], 
+                        @options["pop-proxy-if"], @options["pop-proxy-port"], @options["pop-user"]].join(":")
     end
     ret_code = pop_proxy_multi(pop_proxy_sets)
     
     # never reached
-    Options["message-fh"].print "pop mode end ", Time::new.to_s, "\n" if (Options["verbose"])
+    @options["message-fh"].print "pop mode end ", Time::new.to_s, "\n" if (@options["verbose"])
     return ret_code
   end
     
@@ -3046,7 +3069,7 @@ EOM
     else
       raise sprintf("unsupported jtokenizer %s\n", options["jtokenizer"])
     end
-    Jtokenizer::set(options["jtokenizer"])
+    @jtokenizer = Jtokenizer::new(options["jtokenizer"])
     
     options['mark-in-token'] = Default_mark_in_token if (! options['mark-in-token'])
     options['mark-in-token'].gsub!(/\s/, '')
@@ -3066,7 +3089,7 @@ EOM
     if ((! options["disable-utf-8"]) &&
         safe_require("iconv"))
       options["utf-8"] = true
-      define_safe_iconv
+      define_safe_iconv if (! defined?(Iconv.safe_iconv))
     else
       options["utf-8"] = false
     end
@@ -3096,25 +3119,25 @@ EOM
     
   def show_db_status
     Languages.each do |lang|
-      DB[lang].clean.open("r")
-      DB[lang].spam.open("r")
-      DB[lang].prob.open("r")
-      Options["message-fh"].printf("db %s %d %d %d %d %d\n", lang,
-                         DB[lang].clean.size,
-                         DB[lang].clean.file_count,
-                         DB[lang].spam.size,
-                         DB[lang].spam.file_count,
-                         DB[lang].prob.size)
-      DB[lang].prob.close
-      DB[lang].spam.close
-      DB[lang].clean.close
+      @db_hash[lang].clean.open("r")
+      @db_hash[lang].spam.open("r")
+      @db_hash[lang].prob.open("r")
+      @options["message-fh"].printf("db %s %d %d %d %d %d\n", lang,
+                         @db_hash[lang].clean.size,
+                         @db_hash[lang].clean.file_count,
+                         @db_hash[lang].spam.size,
+                         @db_hash[lang].spam.file_count,
+                         @db_hash[lang].prob.size)
+      @db_hash[lang].prob.close
+      @db_hash[lang].spam.close
+      @db_hash[lang].clean.close
     end
   end
     
   def show_process(token_db, maintenance_command)
-    if (Options["pop"])
+    if (@options["pop"])
       prot = "pop"
-    elsif (Options["imap"])
+    elsif (@options["imap"])
       prot = "imap"
     else
       prot = "file"
@@ -3131,7 +3154,7 @@ EOM
       raise "unknown spam_flag"
     end
     
-    Options["message-fh"].printf("%s %s %s %s %s %s %s\n",
+    @options["message-fh"].printf("%s %s %s %s %s %s %s\n",
                                  prot,
                                  token_db.language,
                                  filter_result,
@@ -3150,6 +3173,9 @@ EOM
   end
     
   def setup(command_line_options)
+    @options.clear
+    @db_hash.clear
+
     command_line_options_backup = command_line_options.dup
     argv_backup = ARGV.dup
     ARGV.clear
@@ -3157,40 +3183,42 @@ EOM
       ARGV.unshift(*command_line_options_backup)
     end
 
-    Options.update(get_options)
+    @options.update(get_options)
 
     STDIN::binmode
-    if (Options["quiet"])
-      Options["message-fh"] = DevNull::new
-    elsif (((Options["export-clean"] || Options["export-spam"] || Options["export-probability"]) &&
+    if (@options["quiet"])
+      @options["message-fh"] = DevNull::new
+      @options["pipe-fh"] = DevNull::new
+    elsif (((@options["export-clean"] || @options["export-spam"] || @options["export-probability"]) &&
          ((ARGV.length == 0) || (ARGV[0] == "-"))) || # export to stdout
-        Options["list-clean"] || Options["list-spam"] || Options["pipe"])
-      Options["message-fh"] = STDERR
+        @options["list-clean"] || @options["list-spam"] || @options["pipe"])
+      @options["message-fh"] = STDERR
+      @options["pipe-fh"] = STDOUT
       STDOUT::binmode
     else
-      Options["message-fh"] = STDOUT
+      @options["message-fh"] = STDOUT
+      @options["pipe-fh"] = STDOUT
       # keep STDOUT in text mode
     end
 
-##    Options["message-fh"].sync = true
+##    @options["message-fh"].sync = true
     
-    Options['mark-in-token'] = Regexp::quote(Options['mark-in-token'])
+    @options['mark-in-token'] = Regexp::quote(@options['mark-in-token'])
     
-    init_dir(Options["homedir"])
-    Options["message-fh"].print "start ", Time::new.to_s, "\n" if (Options["verbose"])
+    init_dir(@options["homedir"])
     
     Languages.each do |lang|
-      case Options["method"]
+      case @options["method"]
       when 'rf'
-        DB[lang] = RobinsonFisher::new(lang)
+        @db_hash[lang] = RobinsonFisher::new(@options, lang)
       when 'r'
-        DB[lang] = Robinson::new(lang)
+        @db_hash[lang] = Robinson::new(@options, lang)
       when 'g'
-        DB[lang] = Graham::new(lang)
+        @db_hash[lang] = Graham::new(@options, lang)
       else
-        raise sprintf("unknown method %s", Options["method"])
+        raise sprintf("unknown method %s", @options["method"])
       end
-      DB[lang].spam_cutoff = Options["spam-cutoff"].to_f if (Options["spam-cutoff"])
+      @db_hash[lang].spam_cutoff = @options["spam-cutoff"].to_f if (@options["spam-cutoff"])
     end
 
     rest_options = ARGV.dup
@@ -3203,15 +3231,16 @@ EOM
   end
 
   def run(command_line_args)
-    if (Options["show-db-status"])
+    @options["message-fh"].print "start ", Time::new.to_s, "\n" if (@options["verbose"])
+    if (@options["show-db-status"])
       show_db_status
       return EXIT_NORMAL
     end
     
-    if (Options["pop"])
-      write_pid_file(Options["pid-file"])
+    if (@options["pop"])
+      write_pid_file(@options["pid-file"])
       do_pop
-      File::unlink(Options["pid-file"])
+      File::unlink(@options["pid-file"])
       return EXIT_NORMAL
     end
     
@@ -3219,66 +3248,66 @@ EOM
     
     token_dbs = Array::new
     @token_dbs = token_dbs
-    if (Options["import-clean"] ||
-        Options["import-spam"] ||
-        Options["add-clean"] ||
-        Options["add-spam"] ||
-        Options["sub-clean"] ||
-        Options["sub-spam"])
+    if (@options["import-clean"] ||
+        @options["import-spam"] ||
+        @options["add-clean"] ||
+        @options["add-spam"] ||
+        @options["sub-clean"] ||
+        @options["sub-spam"])
       filtering_mode = false
-      if (command_line_args.empty? && ! Options["imap"])
+      if (command_line_args.empty? && ! @options["imap"])
         token_dbs = update_token_dbs(["-"])
       else
         token_dbs = update_token_dbs(command_line_args)
       end
     end
     
-    if (Options["export-clean"] || Options["export-spam"] || Options["export-probability"])
+    if (@options["export-clean"] || @options["export-spam"] || @options["export-probability"])
       filtering_mode = false
       do_export(command_line_args)
     end
     
-    if (Options["update"])
+    if (@options["update"])
       filtering_mode = false
       Languages.each do |lang|
-        DB[lang].clean.open("r")
-        DB[lang].spam.open("r")
-        DB[lang].update_probability(token_dbs) # dbs = Array of TokenDB for -c, -s
-        DB[lang].clean.close
-        DB[lang].spam.close
+        @db_hash[lang].clean.open("r")
+        @db_hash[lang].spam.open("r")
+        @db_hash[lang].update_probability(token_dbs) # dbs = Array of TokenDB for -c, -s
+        @db_hash[lang].clean.close
+        @db_hash[lang].spam.close
       end
     end
     
     ret_code = CODE_NORMAL
     if (filtering_mode)
       Languages.each do |lang|
-        DB[lang].prob.open("r")
+        @db_hash[lang].prob.open("r")
       end
-      if (Options["imap"])
+      if (@options["imap"])
         ret_code = do_imap(command_line_args, token_dbs)
       else
         if (command_line_args.empty?)
           command_line_args = ["-"]
         end
-        ret_code = CODE_CLEAN if (! Options["pipe"])
+        ret_code = CODE_CLEAN if (! @options["pipe"])
         command_line_args.each do |file|
           open_ro(file) do |fh|
             number = 1
-            mbox = Mbox::new(fh)
+            mbox = Mbox::new(@options, fh)
             while (buf = mbox.read)
               token_db = tokenize_buf(buf)
               token_db.filename = file
-              DB[token_db.language].get_combined_probability(token_db)
+              @db_hash[token_db.language].get_combined_probability(token_db)
               insert_headers!(buf, token_db.spam_flag, token_db.probability) 
-              if (Options["pipe"])
-                print buf
+              if (@options["pipe"])
+                @options["pipe-fh"].print buf
               end
-              printf("%s\n", file) if (token_db.spam_flag && Options["list-spam"])
-              printf("%s\n", file) if (! token_db.spam_flag && Options["list-clean"])
-              ret_code = CODE_SPAM if (token_db.spam_flag && (! Options["pipe"]))
+              printf("%s\n", file) if (token_db.spam_flag && @options["list-spam"])
+              printf("%s\n", file) if (! token_db.spam_flag && @options["list-clean"])
+              ret_code = CODE_SPAM if (token_db.spam_flag && (! @options["pipe"]))
               token_dbs.push(token_db)
               if (defined?(fh.path))
-                Options["message-fh"].printf("combined probability %s %d %f\n", 
+                @options["message-fh"].printf("combined probability %s %d %f\n", 
                                              fh.path, number, token_db.probability) 
               end
               number += 1
@@ -3287,18 +3316,18 @@ EOM
         end
       end
       Languages.each do |lang|
-        DB[lang].prob.close
+        @db_hash[lang].prob.close
       end
       STDOUT::flush
-      if (Options["auto-update"])
+      if (@options["auto-update"])
         auto_update(token_dbs) 
-      elsif (Options["show-process"])
+      elsif (@options["show-process"])
         token_dbs.each do |token_db|
           show_process(token_db, "-")
         end
       end
     end
-    Options["message-fh"].print "end ", Time::new.to_s, "\n" if (Options["verbose"])
+    @options["message-fh"].print "end ", Time::new.to_s, "\n" if (@options["verbose"])
     
     return ret_code
   end

@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.29 2005/07/23 11:13:05 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.32 2005/12/10 13:37:21 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / е┘еде╕евеє е╣е╤ер е╒егеые┐</h1>
 
 <p class="icon">
@@ -63,7 +63,7 @@
 
 <h2><a id="download">2. е└ежеєеэб╝е╔/едеєе╣е╚б╝еы</a></h2>
 <ul>
-<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.9.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.10.tgz</strong></a></li>
 <li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVSевепе╗е╣</strong></a></li>
 </ul>
 <h3>2.1. UNIX╖╧д╬╛ь╣ч</h3>
@@ -432,7 +432,7 @@ bsfilterдмPOP proxyд╚д╖д╞╞░║юд╣дыбге╡б╝е╨д╚bsfilter┤╓бвbsfilterд╚MUA┤╓д╧POPдЄ╗╚═
 <p class="fig"><img src="pop-with-bsfilter.png" alt="POP proxyд╚д╖д╞╞░║ю" /></p>
 
 <p>
-pops.exmaple.comдмPOP over SSLдЄ╗╚═╤д╖д╞ддды╛ь╣чд╧бве╡б╝е╨д╚bsfilter┤╓д╧POP over SSLбвbsfilterд╚MUA┤╓д╧POPдЄ╗╚═╤д╣дыбг<strong>(1.67.2.*░╩╣▀)</strong>
+pops.exmaple.comдмPOP over SSLдЄ╗╚═╤д╖д╞ддды╛ь╣чд╧бве╡б╝е╨д╚bsfilter┤╓д╧POP over SSLбвbsfilterд╚MUA┤╓д╧POPдЄ╗╚═╤д╣дыбг
 </p>
 <pre>
 % bsfilter --ssl --pop --auto-update --insert-flag --insert-probability --pop-server pops.example.com --pop-port 995 --pop-proxy-port 10110
@@ -500,9 +500,6 @@ POP proxyд╬еыб╝еыдЄ╡н╜╥д╣дыбг╩г┐Ї╡н╜╥д╟дндыбг--pop-server, --pop-port, --pop-pro
 <h3>Q. IMAP over SSLд╬║▌д╦╛┌╠└╜ёдЄ╗╪─ъд╣дыд╚░█╛я╜к╬╗д╣ды</h3>
 <p>ruby╔╕╜рещеде╓ещеъд╬net/imap.rbд╬╠ф┬ъбгruby-1.8.3░╩╣▀д╩дщ╠ф┬ъд╩ддд╧д║</p>
 
-<h3>Q. windowsд╟POP proxyд╚д╖д╞╗╚═╤д╣дыд╚есб╝еыдме╡б╝е╨длдщ╝шдьд╩дд</h3>
-<p>дкд╜дщдпruby-1.8.2 mswin32╚╟д╬╠ф┬ъ</p>
-
 <h3>Q. in `get_all_responses': Mailbox does not exist, or must be subscribed to. (Net::IMAP::NoResponseError)д╚ддджеиещб╝д╟═юд┴дыд╬д└д▒д╔</h3>
 <p>есб╝еые▄е├епе╣д╬╠╛┴░дм┤╓░уд├д╞дддыд╚╗╫дядьдыбгruby-1.8д╬imap.rbд╟░╩▓╝д╬дшджд╦д╖д╞─┤д┘дыд╚дшддбг</p>
 <pre>
@@ -523,6 +520,19 @@ Rubyдмедеєе╣е╚б╝еыд╡дьд╞ддд╩дд╛ь╣чд╧бвbsfilter.exeбвbsfilterw.exeдЄ╗╚═╤д╣дыд╬дм┤
 еке╫е╖ечеєбв░·┐Їд╩д╖д╟╡п╞░д╣дыд╚бв╔╕╜р╞■╬╧длдщесб╝еыдЄ╞╔дтджд╚д╖д╞еиещб╝д╣дыд╬д╧╗┼══бг</li>
 </ul>
 <p><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter└▀─ъесет(Windows╩╘)</a>дм╛▄д╖ддбг</p>
+
+<h3>Q. д╔д│длдщiconv.dllдЄ╞■╝ъд╣дьд╨дшдд?</h3>
+<p><a href="http://www.rubyist.net/~nobu/t/20051108.html#p01">д╩длд└д╡дєд╬─┤║║</a>д╦дшдыд╚бв
+ruby╦▄┬╬д╚iconv.dllд╬┴╚╣чд╗д╦└й╕┬дмдвдыбг╣ндп╗╚дядьд╞дддыrubyд╦┬╨д╖д╞д╧░╩▓╝д╬дшджд╦д╩дыд╧д║бг</p>
+<dl>
+<dt><a href="http://www.kaoriya.net/#LIBICONV">KaoriYa.Net</a>д╟╟█╔█д╡дьд╞дддыLibiconv DLL 1.9.1 for Windows</dt>
+<dd>OK</dd>
+<dt><a href="http://www.kaoriya.net/#LIBICONV">KaoriYa.Net</a>д╟╟█╔█д╡дьд╞дддыLibiconv DLL 1.10-20051016 for Windows</dt>
+<dd>NGбгд┐д▐д╦"[BUG] rb_sys_fail(iconv) - errno == 0"д╚ддджесе├е╗б╝е╕д╟═юд┴дыдлдт</dd>
+<dt><a href="http://sylpheed.good-day.net/">Sylpheed</a>д╟╗╚═╤д╖д╞дддыдтд╬</dt>
+<dd>OKбгWin32╚╟д╦╞▒║нд╡дьд╞дддыдтд╬дфбв<a href="http://sylpheed.good-day.net/sylpheed/win32/">http://sylpheed.good-day.net/sylpheed/win32/</a>
+д╬libiconvд╬дтд╬</dd>
+</dl>
 
 <h3>Q. exit statusд╧д╔д╬дшджд╦д╩д├д╞ддды?</h3>
 <p>─╠╛яд╧0бг--pipeеке╫е╖ечеєд╩д╖д╟╚╜─ъ┬╨╛▌есб╝еыдЄ╔╕╜р╞■╬╧длдщ═┐дид┐╛ь╣чд╬д▀бв╚╜─ъ╖ы▓╠дЄexit statusдлдщ╞└дыд│д╚дм╜╨═шдыбг
@@ -560,7 +570,14 @@ clean token databaseд╦─╔▓├д╖бв│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг</p>
 <h3>Q. ▓с╡юд╦╝їд▒╝шд├д┐spamдЄ╩▌┬╕д╖д╞ддд╩ддд╬д╟бвspam token databaseдм║юдьд╩ддбгд╔дждьд╨дшдд?</h3>
 <p><a href="http://tlec.linux.or.jp/docs/spamassassin.html">TLEC presents spamassassin дЄ fetchmail длдщ═°═╤д╣ды╩¤╦б</a>
 д╟╛╥▓Ёд╡дьд╞дддыбв
-<a href="http://www.flcl.org/~yoh/spam9xxxx.tar.gz">Linux-usersеседеъеєе░еъе╣е╚д╬spamдЄдлдн╜╕дсд┐дтд╬</a>дЄ═°═╤д╣дыд╬дм╩╪═°бг</p>
+<a href="http://www.flcl.org/~yoh/yoh_spam_050102.tar.bz2">Linux-usersеседеъеєе░еъе╣е╚д╬spamдЄдлдн╜╕дсд┐дтд╬</a>дЄ═°═╤д╣дыд╬дм╩╪═°бг</p>
+
+<p>FreeBSD ports-jp MLд╬░╩▓╝д╬евб╝еледе╓д╧spamд╬д▀бг</p>
+<ul>
+<li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17201-17300.tar.gz">ports-jp-17201-17300.tar.gz</a></li>
+<li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17301-17400.tar.gz">ports-jp-17301-17400.tar.gz</a></li>
+<li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17401-17500.tar.gz">ports-jp-17401-17500.tar.gz</a></li>
+</ul>
 
 <h3>Q. Paul Graham╩¤╝░бвGary Robinson╩¤╝░бвGary Robinson-Fisher╩¤╝░дЄ└┌дъ┬╪дидыд╦д╧?</h3>
 <p>Paul Graham╩¤╝░д╚бвGary RobinsonбвGary Robinson-Fisher╩¤╝░д╚д╬┤╓д╟└┌дъ┬╪дидыд╦д╧бв
@@ -606,7 +623,6 @@ S = (1 + P' - Q') / 2
 </pre>
 
 <h2><a id="bug">10. е╨е░</a></h2>
-<p>utf-8д╩есб╝еыд╧д╔дєд╩дтд╬д╟двдьбв╞№╦▄╕ьд╬есб╝еыд╚д╖д╞░╖д├д╞д╖д▐джбг</p>
 <p>
 е│е▐еєе╔ещедеє░·┐Їд╟бвmbox╖┴╝░д╬е╒ебедеыдЄ╗╪─ъд╣дыд│д╚дт▓─╟╜д╟двдыдмбв
 <code>Content-length</code>е╪е├е└дЄ╕лды╡б╟╜дмд╩ддбгд╜д╬д┐дсбвSolarisд╬дшджд╦
@@ -619,13 +635,14 @@ bsfilterдм╔╜╝ид╣дыесб╝еыд╬╚╓╣цд╚бвMUAд╟д╬╚╓╣цдм┐йдд░удж╛у│▓дм╚п└╕д╣дыд╚╗╫дядьдыб
 
 <h2><a id="update">11. ╣╣┐╖═·╬Є</a></h2>
 <p><a href="http://nabeken.tdiary.net">╔о╝╘д╬╞№╡н</a>д╬
-<a href="http://nabeken.tdiary.net/?year=2004;category=bsfilter">bsfilterеле╞е┤еъ</a>д╟┬х═╤бг</p>
+<a href="http://nabeken.tdiary.net/?category=bsfilter">bsfilterеле╞е┤еъ</a>д╟┬х═╤бг</p>
 
 <h2><a id="link">12. ╛Ё╩є╕╗ / еъеєеп</a></h2>
 <ul>
 
 <li>bsfilterд╦д─ддд╞<ul>
 <li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilterе╒ейб╝ещер</strong></a></li>
+<li><a href="http://www.nanashinonozomi.com/tdiary/20051105.html#p02"><strong>Windows ╚╟ Sylpheed д╟ bsfilter дЄ╗╚дж</strong></a></li>
 <li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html">bsfilter</a> qmailд╟╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
 <li><a href="http://www.wikiroom.com/mew/?Mew4FAQ">Mew4 FAQ</a> mewдлдщPOP proxyд╚д╖д╞╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
 <li><a href="http://www.fkimura.com/bsfilter0.html">bsfilterдЄ╞│╞■═°═╤д╖д╞д▀дыесет</a></li>

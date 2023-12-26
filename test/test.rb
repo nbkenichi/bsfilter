@@ -1,5 +1,5 @@
-## -*-Ruby-*- $Id: test.rb,v 1.9 2007/02/12 06:01:44 nabeken Exp $
-## this file is written in eucJP
+# -*- coding: euc-jp -*-
+# -*-Ruby-*- $Id: test.rb,v 1.13 2013/11/03 08:26:42 nabeken Exp $
 
 load '../bsfilter/bsfilter'
 require 'test/unit'
@@ -16,6 +16,8 @@ class DummyFH
   end
   def print(*arg)
     @buf.push(*arg.flatten.dup)
+    @buf.map{|str| str.force_encoding('ASCII-8BIT')}
+    @buf = @buf.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join}
   end
   def printf(format, *args)
     @buf.push(sprintf(format, *args))
@@ -30,7 +32,11 @@ class Bsfilter
   end
 
   def grep_message(pattern)
-    options["message-fh"].buf.grep(pattern)
+    if RUBY_VERSION < "1.9"
+      options["message-fh"].buf.grep(pattern)
+    else
+      options["message-fh"].buf.map{|str| str.force_encoding('EUC-JP')}.grep(pattern)
+    end
   end
 
   def count_message(pattern)
@@ -38,7 +44,11 @@ class Bsfilter
   end
 
   def grep_pipe(pattern)
-    options["pipe-fh"].buf.grep(pattern)
+    if RUBY_VERSION < "1.9"
+      options["pipe-fh"].buf.grep(pattern)
+    else
+      options["pipe-fh"].buf.map{|str| str.force_encoding('EUC-JP')}.grep(pattern)
+    end
   end
 
   def count_pipe(pattern)
@@ -202,6 +212,7 @@ class TestMultipleInstances < Test::Unit::TestCase
 
   def test_by_jtokenizer
     return if (! safe_require('MeCab'))
+    return if (! safe_require('chasen.o'))
 
     @files = ["testcases/iso_2022_jp_plain"]
 

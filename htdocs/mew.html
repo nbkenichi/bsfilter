@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: mew.html,v 1.5 2006/01/14 07:37:38 nabeken Exp $</p>
+<p class="version">$Id: mew.html,v 1.7 2012/06/17 06:57:11 nabeken Exp $</p>
 <h1>bsfilter with mew</h1>
 
 <p class="icon">
@@ -24,6 +24,26 @@
 </p>
 
 <p><a href="index.html">index</a></p>
+
+<h2>bsfilterをmew version 5以降から使う</h2>
+<p>bsfilterを使用するよう、mewのspam関係の設定を行う。</p>
+
+<h3>インストール</h3>
+<ul>
+<li>mewのバージョンに合わせてmua/mew{5, 6, 6.4}/mew.elを~/.emacs.elなどに追加する。</li>
+</ul>
+
+<h3>使い方</h3>
+<p>mewがメッセージを取得する際、既にMTA, POP proxy等によりX-Spam-Flagヘッダが付いている場合には、spamに自動的に"D"マークが付く。</p>
+<p>summaryモードで以下が利用できる。</p>
+<dl>
+<dt>lh</dt><dd>learn-ham。現在のメッセージをcleanとして学習する。</dd>
+<dt>ls</dt><dd>learn-spam。現在のメッセージをspamとして学習する。</dd>
+<dt>lm</dt><dd>リージョン内のメイルを学習、判定。spamには"*"マークが付く。(mew 6.4以降)</dd>
+<dt>bm</dt><dd>リージョン内のメイルを学習、判定。spamには"*"マークが付く。(mew 6.3以前)</dd>
+</dl>
+
+
 <h2>bsfilterをmew version 4から使う</h2>
 <p>bsfilterを使用するよう、mewのspam関係の設定を行う。</p>
 

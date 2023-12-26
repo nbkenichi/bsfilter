@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.40 2008/03/02 13:04:39 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.41 2013/11/03 08:40:41 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</h1>
 
 <p class="icon">
@@ -69,9 +69,6 @@
 <h3>2.1. UNIX系の場合</h3>
 <p>rubyインタープリタをインストールし、アーカイブの中のbsfilter/bsfilterをPATHが通っている適当なディレクトリに置く。
 OS、ディストリビューションによっては、ports、ebuild等のパッケージが用意されている場合もある。</p>
-<h3>2.2. Windowsの場合</h3>
-<p>iconv.dllをインストールし、アーカイブの中のbsfilter/bsfilter.exe, bsfilter/bsfilterw.exeを適当なディレクトリに置く。
-コマンドプロンプトからはbsfilter.exe、それ以外からはbsfilterw.exeを使用するのがお薦め。</p>
 
 <h2><a id="concept">3. ざっくり、どうなっているの?</a></h2>
 <h3>3.1. 単語(token)のspam確率から判定する</h3>
@@ -516,28 +513,7 @@ taro@imap.example.com&gt; list
 </pre>
 
 <h3>Q. windowsで使いたいのだけど?</h3>
-<p>mswin32版、cygwin版等、既にRubyがインストール済みの場合は、bsfilterのソースを普通に実行すればよい。
-Rubyがインストールされていない場合は、bsfilter.exe、bsfilterw.exeを使用するのが簡単。iconv.dllが別途必要。</p>
-<ul>
-<li>コマンドプロンプトで、データベースの管理等を行う場合は、bsfilter.exeがお薦め。</li>
-<li>スタートアップでpop proxyとして動作させる場合は、bsfilterw.exeがお薦め。
---verbose, --debug, --show-new-token等、メッセージを出力するオプションは使用できない。
-オプション、引数なしで起動すると、標準入力からメールを読もうとしてエラーするのは仕様。</li>
-</ul>
-<p><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter設定メモ(Windows編)</a>が詳しい。</p>
-
-<h3>Q. どこからiconv.dllを入手すればよい?</h3>
-<p><a href="http://www.rubyist.net/~nobu/t/20051108.html#p01">なかださんの調査</a>によると、
-ruby本体とiconv.dllの組合せに制限がある。広く使われているrubyに対しては以下のようになるはず。</p>
-<dl>
-<dt><a href="http://www.kaoriya.net/#LIBICONV">KaoriYa.Net</a>で配布されているLibiconv DLL 1.9.1 for Windows</dt>
-<dd>OK</dd>
-<dt><a href="http://www.kaoriya.net/#LIBICONV">KaoriYa.Net</a>で配布されているLibiconv DLL 1.10-20051016 for Windows</dt>
-<dd>NG。たまに"[BUG] rb_sys_fail(iconv) - errno == 0"というメッセージで落ちるかも</dd>
-<dt><a href="http://sylpheed.good-day.net/">Sylpheed</a>で使用しているもの</dt>
-<dd>OK。Win32版に同梱されているものや、<a href="http://sylpheed.good-day.net/sylpheed/win32/">http://sylpheed.good-day.net/sylpheed/win32/</a>
-のlibiconvのもの</dd>
-</dl>
+<p>mswin32版、cygwin版等、既にRubyがインストール済みの場合は、bsfilterのソースを普通に実行すればよい。</p>
 
 <h3>Q. exit statusはどのようになっている?</h3>
 <p>通常は0。--pipeオプションなしで判定対象メールを標準入力から与えた場合のみ、判定結果をexit statusから得ることが出来る。

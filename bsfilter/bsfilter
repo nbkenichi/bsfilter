@@ -29,7 +29,7 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_17 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_18 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
   Revision = "$Revision: 1.86 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]

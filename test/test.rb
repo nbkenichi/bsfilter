@@ -1,4 +1,4 @@
-## -*-Ruby-*- $Id: test.rb,v 1.4 2006/04/02 06:45:12 nabeken Exp $
+## -*-Ruby-*- $Id: test.rb,v 1.5 2006/05/03 12:40:57 nabeken Exp $
 ## this file is written in eucJP
 
 load '../bsfilter/bsfilter'
@@ -310,6 +310,20 @@ class TestJtokenizer < Test::Unit::TestCase
   end
 end
 
+
+class TestBase64 < Test::Unit::TestCase
+  def setup
+    @bsfilter = Bsfilter::new
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+  end
+
+  def test_base64
+    @files = ["testcases/sjis_base64_iso_2022_jp"]
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "japanese")
+  end
+end
 
 class TestPlainTextParser < Test::Unit::TestCase
   def setup

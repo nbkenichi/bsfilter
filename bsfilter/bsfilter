@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.78 2006/04/02 04:40:09 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.79 2006/05/03 12:38:50 nabeken Exp $
 
 ## Copyright (C) 2003, 2004, 2005, 2006 NABEYA Kenichi
 ##
@@ -30,9 +30,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_13 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_14 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.78 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.79 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
 
 ##  Options = Hash::new           # used like a global variable
@@ -710,7 +710,7 @@ EOM
       when "w", "wr", "rw"
         @lockfh.flock(File::LOCK_EX)
       else
-        raise
+        raise "internal error: unknown mode #{mode}"
       end
       
       @dbm = open_dbm(@filename, 0600)
@@ -1023,14 +1023,18 @@ EOM
         @method = Proc::new {|s| block(s)}
       when "mecab"
         @method = Proc::new {|s| mecab(s)}
-        @m = MeCab::Tagger.new([$0, "-Ochasen"])
+        if (defined?(MeCab::VERSION)) # defined after 0.90
+          @m = MeCab::Tagger.new("-Ochasen")
+        else
+          @m = MeCab::Tagger.new([$0, "-Ochasen"])
+        end
       when "chasen"
         Chasen.getopt("-F", '%H %m\n', "-j")
         @method = Proc::new {|s| chasen(s)}
       when "kakasi"
         @method = Proc::new {|s| kakasi(s)}
       else
-        raise
+        raise "internal error: unknown method #{method}"
       end
     end
 
@@ -1065,9 +1069,15 @@ EOM
       end
       array = Array::new
       node = @m.parseToNode(str)
-      while (node.hasNode == 1)
-        token = node.getSurface
-        hinshi = node.getFeature.split(/,/)[0]
+      while (node &&
+             (defined?(MeCab::VERSION) || (node.hasNode == 1)))
+        if defined?(MeCab::VERSION)
+          token = node.surface
+          hinshi = node.feature.split(/,/)[0]
+        else
+          token = node.getSurface
+          hinshi = node.getFeature.split(/,/)[0]
+        end
         ##      print token, hinshi, "\n"
         if (hinshi == "\xcc\xbe\xbb\xec")
           if ((token =~ Reg_kanji_katakana) || (token.length > 2))
@@ -1354,7 +1364,7 @@ EOM
   def base64_encoded?(buf)
     [buf.dup, buf.reverse].each do |b|
       while (str = b.shift)
-        if (str =~ /\A[\s\r\n]*\z/)
+        if (str =~ /\A[\.\s\r\n]*\z/)
           next
         elsif (str =~ /\A[A-z0-9=+\/]+[\s\r\n]*\z/)
           break
@@ -1404,7 +1414,8 @@ EOM
     case headers["content-transfer-encoding"]
     when /base64/i
       if (base64_encoded?(buf))
-        buf.map! {|str| str.unpack("m*").to_s}
+##        buf.map! {|str| str.unpack("m*").to_s}
+        buf = buf.join.gsub(/[\r\n]/, '').unpack("m*")
       end
     when /quoted-printable/i
       buf.map! {|str| str.unpack("M*").to_s}
@@ -1844,22 +1855,29 @@ EOM
     end
   end
   
+  def soft_raise(str=nil)
+    STDERR.puts str if (str)
+    STDERR.puts "Try `#{File.basename($0)} --help' for more information."
+    exit 2
+  end
+
   def usage
     
     print <<EOM
 
 NAME
-	bsfilter - bayesian spam filter
+	#{File.basename($0)} - bayesian spam filter
 
 SYNOPSIS
-	bsfilter [options] [commands] < MAIL
-	bsfilter [options] [commands] MAIL ...
+	#{File.basename($0)} [options] [commands] < MAIL
+	#{File.basename($0)} [options] [commands] MAIL ...
+
 
 DESCRIPTION
 	filter spam.
-        If commands are specified, bsfilter is in maintenance mode, otherwise it is in filtering mode.
-        If bsfilter does not find spam in filtering mode, exit status is 1.
-        If bsfilter runs with --pipe option or finds spam, exit status is 0.
+	If commands are specified, bsfilter is in maintenance mode, otherwise it is in filtering mode.
+	If bsfilter does not find spam in filtering mode, exit status is 1.
+	If bsfilter runs with --pipe option or finds spam, exit status is 0.
 
 COMMANDS
 	--add-clean|-c
@@ -2405,7 +2423,16 @@ EOM
       end
     end
     if (@options["imap-fetch-unflagged"])
-      uids = uids - imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
+      null = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
+      yes = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), "Yes"])
+      no = imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), "No"])
+      @options["message-fh"].printf("imap-fetch-unflagged working original %d null %d Yes %d No %d\n",
+                                    uids.length, null.length, yes.length, no.length) if (@options["verbose"])
+##      uids = uids - imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
+      ## Sendmail Advanced Message Server returns all mails when search string is zero-length ???
+      uids = uids - yes - no
+      @options["message-fh"].printf("imap-fetch-unflagged worked %d\n",
+                                    uids.length) if (@options["verbose"])
     end
     return uids
   end
@@ -2523,7 +2550,7 @@ EOM
     pop_socket.write_timeout(command) # RETR to server
     str = pop_socket.gets_timeout # response from server
     pop_proxy_socket.write_timeout(str) # forward
-    return if (str =~ /^\A\+ng/i)
+    return if (str =~ /^\A\-ERR/)
     
     while (str != ".\r\n")
       timeout(SOCKET_TIMEOUT) do
@@ -2535,7 +2562,7 @@ EOM
   
   def snoop_list_response(strs)
     h = DBHash::new
-    if (strs[0] =~ /\A\+ok\s*(\d+)\s+(\d+)/)
+    if (strs[0] =~ /\A\+OK\s*(\d+)\s+(\d+)/)
       h[$1] = $2.to_i
     else
       strs.each do |str|
@@ -2642,16 +2669,12 @@ EOM
       require('vr/vrtray')
     end
     
-    if (! options["pop-proxy-set"])
-      ["pop-server"].each do |name|
-        if (! options[name])
-          printf("specify %s\n", name)
-          error = true
-        end
-      end
+    if (options["pop-proxy-set"] || options["pop-server"])
+      ## ok
+    else
+      soft_raise("#{$0}: pop-server unspecified")
     end
-    
-    raise "error found in pop options" if (error)
+
     return
   end
   
@@ -2695,9 +2718,7 @@ EOM
         @db_hash[token_db.language].get_combined_probability(token_db)
         token_dbs.push(token_db)
         @options["message-fh"].printf("combined probability %s %d %f\n", mailbox, imapm.seqno, token_db.probability) if (@options["verbose"])
-        if (@options["show-process"] && ! @options["auto-update"])
-          show_process(token_db, "-") 
-        end
+
         updated = false
         target_mailbox = mailbox
         if (token_db.spam_flag)
@@ -2996,8 +3017,7 @@ EOM
         end
       end
     rescue
-      usage
-      raise parser.error_message
+      soft_raise(sprintf("#{$0}: %s", parser.error_message))
     end
     return options
   end
@@ -3008,7 +3028,7 @@ EOM
     options = parse_command_line
     
     if (options["config-file"] && (! File::file?(options["config-file"])))
-      raise sprintf("can't find config file %s\n", options["config-file"])
+      soft_raise(sprintf("#{$0}: can't open config file `%s'. check argument of --config-file\n", options["config-file"]))
     end
     
     if (! options["homedir"])
@@ -3048,8 +3068,7 @@ EOM
     
     if (options["method"])
       if (options["method"] !~ /\A(g|r|rf)\z/)
-        usage
-        raise sprintf("unsupported method %s\n", options["method"])
+        soft_raise(sprintf("#{$0}: unsupported method `%s' for --method or -m\n", options["method"]))
       end
     else
       options["method"] = Default_method
@@ -3071,7 +3090,7 @@ EOM
     when "qdbm"
       require 'depot'
     else
-      raise sprintf("unsupported db %s\n", options["db"])
+      soft_raise(sprintf("#{$0}: unsupported argument `%s' for --db\n", options["db"]))
     end
     
     if (options["jtokenizer"])
@@ -3089,7 +3108,7 @@ EOM
     when "kakasi"
       require 'kakasi'
     else
-      raise sprintf("unsupported jtokenizer %s\n", options["jtokenizer"])
+      soft_raise(sprintf("#{$0}: unsupported argument `%s' for --jtokenizer or -j\n", options["jtokenizer"]))
     end
     @jtokenizer = Jtokenizer::new(options["jtokenizer"])
     
@@ -3142,7 +3161,7 @@ EOM
     if (options["ssl"])
       if (options["ssl-cert"])
         if (! File::readable?(options["ssl-cert"]))
-          raise sprintf("can't read %s. check --ssl-cert option", options["ssl-cert"])
+          soft_raise(sprintf("#{$0}: can't read %s. check --ssl-cert option", options["ssl-cert"]))
         end
       end
       require "openssl"
@@ -3185,7 +3204,7 @@ EOM
     when false
       filter_result = "clean"
     else
-      raise "unknown spam_flag"
+      raise "internal error: unknown spam_flag"
     end
     
     @options["message-fh"].printf("%s %s %s %s %s %s %s\n",
@@ -3250,7 +3269,7 @@ EOM
       when 'g'
         @db_hash[lang] = Graham::new(@options, lang)
       else
-        raise sprintf("unknown method %s", @options["method"])
+        raise sprintf("internal error: unknown method %s", @options["method"])
       end
       @db_hash[lang].spam_cutoff = @options["spam-cutoff"].to_f if (@options["spam-cutoff"])
     end

@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.20 2004/10/24 06:16:53 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.22 2004/12/18 15:13:30 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</h1>
 
 <p class="icon">
@@ -61,11 +61,17 @@
 <li><a href="#link">12. 情報源 / リンク</a></li>
 </ul>
 
-<h2><a id="download">2. ダウンロード</a></h2>
+<h2><a id="download">2. ダウンロード/インストール</a></h2>
 <ul>
-<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.5.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.6.tgz</strong></a></li>
 <li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVSアクセス</strong></a></li>
 </ul>
+<h3>2.1. UNIX系の場合</h3>
+<p>rubyインタープリタをインストールし、アーカイブの中のbsfilter/bsfilterをPATHが通っている適当なディレクトリに置く。
+OS、ディストリビューションによっては、ports、ebuild等のパッケージが用意されている場合もある。</p>
+<h3>2.2. Windowsの場合</h3>
+<p>iconv.dllをインストールし、アーカイブの中のbsfilter/bsfilter.exe, bsfilter/bsfilterw.exeを適当なディレクトリに置く。
+コマンドプロンプトからはbsfilter.exe、それ以外からはbsfilterw.exeを使用するのがお薦め。</p>
 
 <h2><a id="concept">3. ざっくり、どうなっているの?</a></h2>
 <h3>3.1. 単語(token)のspam確率から判定する</h3>
@@ -313,7 +319,13 @@ filtering modeの際には判定結果に基づき、maintenance modeの際にはコマンドに基づき
 <dd>stdoutに出力するメイルのヘッダに、"X-Spam-Revision: bsfilter..."を追加する。filtering modeでのみ有効。</dd>
 
 <dt>--header-prefix string</dt>
-<dd>メイルのヘッダに、"X-Spam-..."ではなく、X-指定した文字列-..."を追加する。</dd>
+<dd>メイルのヘッダに、"X-Spam-..."ではなく、"X-指定した文字列-..."を追加する。</dd>
+
+<dt>--mark-spam-subject</dt>
+<dd>spamの場合、メイルのSubjectヘッダに"[SPAM] "を挿入する。</dd>
+
+<dt>--spam-subject-prefix string</dt>
+<dd>メイルのSubjectヘッダに"[SPAM] "ではなく、指定した文字列を挿入する。</dd>
 
 <dt>--list-clean</dt>
 <dd>cleanと判定されたファイルネームを表示する。判定対象のメイルをコマンドライン引数で与えた場合のみ有効。</dd>

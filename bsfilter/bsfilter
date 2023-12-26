@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.65 2004/10/23 18:47:18 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.67 2004/12/09 14:53:40 nabeken Exp $
 
 ## Copyright (C) 2003, 2004 NABEYA Kenichi
 ##
@@ -27,17 +27,18 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_5 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_6 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.65 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.67 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Options = Hash::new           # used like a global variable
   DB = Hash::new
   
   Default_header_prefix = "Spam"
+  Default_spam_subject_prefix = "[SPAM] "
   
   Default_jtokenizer = "bigram"
-  Default_mark_in_token = "!*'"
+  Default_mark_in_token = "|!*'"
   Default_homedir = ".bsfilter"
   Default_conf_file = "bsfilter.conf"
   Default_pid_file = "bsfilter.pid"
@@ -121,6 +122,25 @@ class Bsfilter
       end
     end
 
+    def append_header!(buf, header, prefix)
+      buf[0] =~ /([\r\n]*)\z/
+      eol = $1
+      
+      (0 ... buf.length).each do |i|
+        if (buf[i] =~/\A(.*?:)(\s*)(.*)/)
+          h = $1
+          org_content = $3
+          if (h.downcase == header.downcase)
+            buf[i] = "#{header} #{prefix}#{org_content}#{eol}"
+            break
+          end
+        elsif (buf[i] =~ /\A[\r\n]*\z/)
+          buf[i, 0] = "#{header} #{prefix}#{eol}"
+          break
+        end
+      end
+    end
+
     def x_spam_flag
       return sprintf("X-%s-Flag:", Options["header-prefix"])
     end
@@ -150,6 +170,12 @@ class Bsfilter
       if (Options["insert-probability"] && probability)
         updated = true
         insert_header!(buf, x_spam_probability, sprintf("%f", probability))
+      end
+      if (Options["mark-spam-subject"])
+        updated = true
+        if (spam_flag)
+          append_header!(buf, "Subject:", Options["spam-subject-prefix"])
+        end
       end
       return updated
     end
@@ -776,18 +802,36 @@ EOM
     reg_sjis = Regexp::compile("[\x82\x9f-\x82\xaa\x81\x42]", nil, 's') # hiragana in shift-jis
     reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
     
-    reg_mime = Regexp::compile('(^\w+: .*|charset="?)(utf-8|iso-2022-jp|x.sjis|shift.jis|euc.jp)', Regexp::IGNORECASE, 'n')
+    reg_char_ja = Regexp::compile('(^\w+: .*|charset="?)(iso-2022-jp|x.sjis|shift.jis|euc.jp)', Regexp::IGNORECASE, 'n')
+    reg_char_utf8 = Regexp::compile('(^\w+: .*|charset="?)(utf-8)', Regexp::IGNORECASE, 'n')
+    reg_cte_bin = Regexp::compile('\Acontent-transfer-encoding\s*:\s*(base64|quoted-printable)', Regexp::IGNORECASE, 'n')
     reg_c = Regexp::compile('(^\w+: .*|charset="?)(ks_c_5601|euc-kr|big5|gb2312)', Regexp::IGNORECASE, 'n')
+
     found_reg_euc = false
     found_reg_sjis = false
+    found_char_utf8 = false
+    found_cte_bin = false
+
     buf.each do |str|
       case str
       when reg_euc
         found_reg_euc = true
       when reg_sjis
         found_reg_sjis = true
-      when reg_mime
-        Options["message-fh"].printf("lang ja mime\n") if (Options["debug"])
+      when reg_char_utf8
+        found_char_utf8 = true
+        if (found_char_utf8 && found_cte_bin)
+          Options["message-fh"].printf("lang ja char_utf8\n") if (Options["debug"])
+          return "ja"
+        end
+      when reg_cte_bin
+        found_cte_bin = true
+        if (found_char_utf8 && found_cte_bin)
+          Options["message-fh"].printf("lang ja char_utf8\n") if (Options["debug"])
+          return "ja"
+        end
+      when reg_char_ja
+        Options["message-fh"].printf("lang ja char_ja\n") if (Options["debug"])
         return "ja"
       when reg_c
         Options["message-fh"].printf("lang C reg\n") if (Options["debug"])
@@ -1150,7 +1194,7 @@ EOM
         end
       elsif (token.length < 20)
         body_hash[token] += 1 
-        Options["message-fh"].printf("tokenizer %s %s\n", "body", token) if (Options["debug"])
+        Options["message-fh"].printf("tokenizer C %s %s\n", "body", token) if (Options["debug"])
       end
     end
     
@@ -1162,7 +1206,7 @@ EOM
       str.split.each do |s|
         Jtokenizer::split(s).each do |token|
           body_hash[token] += 1
-          Options["message-fh"].printf("tokenizer %s %s\n", "body", token) if (Options["debug"])
+          Options["message-fh"].printf("tokenizer ja %s %s\n", "body", token) if (Options["debug"])
         end
       end
     end
@@ -1628,7 +1672,7 @@ DESCRIPTION
 	filter spam.
         If commands are specified, bsfilter is in maintenance mode, otherwise it is in filtering mode.
         If bsfilter does not find spam in filtering mode, exit status is 1.
-        If bsfilter runs with --pipe option or finds spam, exit staus is 0.
+        If bsfilter runs with --pipe option or finds spam, exit status is 0.
 
 COMMANDS
 	--add-clean|-c
@@ -1829,16 +1873,24 @@ OPTIONS
 		this options is invalid when "--imap" or "--pop" is specified
 
 	--insert-revision
-		insert "X-Spam-Revision: bsfilter release..." into a mail
+		insert "X-#{Default_header_prefix}-Revision: bsfilter release..." into a mail
 
 	--insert-flag
-		insert "X-Spam-Flag: Yes" or "X-Spam-Flag: No" into a mail
+		insert "X-#{Default_header_prefix}-Flag: Yes" or "X-#{Default_header_prefix}-Flag: No" into a mail
 
 	--insert-probability
-		insert "X-Spam-Probability: number" into a mail
+		insert "X-#{Default_header_prefix}-Probability: number" into a mail
 
 	--header-prefix string
-		insert "X-spcecified_string-..." headers, instead of "Spam"
+		valid with --insert-flag and/or --insert-probability option
+		insert "X-specified_string-..." headers, instead of "#{Default_header_prefix}"
+
+	--mark-spam-subject
+		insert "#{Default_spam_subject_prefix}" at the beginning of Subject header
+
+	--spam-subject-prefix string
+		valid with --mark-spam-subject option
+		insert specified string, instead of "#{Default_spam_subject_prefix}"
 
 	--show-db-status
 		show numbers of tokens and mails in databases and quit
@@ -2133,7 +2185,7 @@ EOM
       end
     end
     if (Options["imap-fetch-unflagged"])
-      uids = uids - imap.uid_search(["HEADER", "X-Spam-Flag", ""])
+      uids = uids - imap.uid_search(["HEADER", x_spam_flag.sub(/:$/, ''), ""])
     end
     return uids
   end
@@ -2579,7 +2631,7 @@ EOM
     return ret_code
   end
     
-  def  write_pid_file(file)
+  def write_pid_file(file)
     open(file, "w") do |fh|
       fh.print Process::pid, "\n"
     end
@@ -2646,6 +2698,8 @@ EOM
                        ["--insert-flag", GetoptLong::NO_ARGUMENT],
                        ["--insert-probability", GetoptLong::NO_ARGUMENT],
                        ["--header-prefix", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--mark-spam-subject", GetoptLong::NO_ARGUMENT],
+                       ["--spam-subject-prefix", GetoptLong::REQUIRED_ARGUMENT],
                        ["--list-clean", GetoptLong::NO_ARGUMENT],
                        ["--list-spam", GetoptLong::NO_ARGUMENT],
                        ["--show-db-status", GetoptLong::NO_ARGUMENT],
@@ -2729,6 +2783,7 @@ EOM
     end
     
     options["header-prefix"] = Default_header_prefix if (! options["header-prefix"])
+    options["spam-subject-prefix"] = Default_spam_subject_prefix if (! options["spam-subject-prefix"])
     
     options["db"] = Default_db if (! options["db"])
     case options["db"]

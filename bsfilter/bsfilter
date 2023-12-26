@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.67 2004/12/09 14:53:40 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.71 2005/07/18 12:46:46 nabeken Exp $
 
-## Copyright (C) 2003, 2004 NABEYA Kenichi
+## Copyright (C) 2003, 2004, 2005 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -27,9 +27,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_6 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_8 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.67 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.71 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Options = Hash::new           # used like a global variable
   DB = Hash::new
@@ -57,6 +57,8 @@ class Bsfilter
   Default_imap_port = "143"
   Default_imap_auth = "auto"
   Default_imap_auth_preference = ["cram-md5", "login", "loginc"]
+
+  Default_icon_number = 32512
   
   Clean_ext = ".clean"
   Spam_ext = ".spam"
@@ -66,6 +68,8 @@ class Bsfilter
   SDBM_ext = ".sdbm"
   GDBM_ext = ".gdbm"
   BDB1_ext = ".bdb1"
+  BDB_ext = ".bdb"
+  QDBM_ext = ".qdbm"
   
   EXIT_NORMAL = 0
   CODE_NORMAL = true
@@ -74,6 +78,7 @@ class Bsfilter
   
   CODESET_EUCJP = "eucJP"
   CODESET_LATIN = "ISO8859-1"
+  CODESET_GB18030 = "GB18030"
   CODESET_UTF8 = "UTF-8"
   PATTERN_UTF8 = '[\xe0-\xef][\x80-\xbf][\x80-\xbf][\xe0-\xef][\x80-\xbf][\x80-\xbf]'
   RE_UTF8 = Regexp.new(PATTERN_UTF8, 'n')
@@ -284,6 +289,9 @@ class Bsfilter
     def Iconv.u2latin(str)
       return (Iconv.safe_iconv(CODESET_LATIN, CODESET_UTF8, str))[0]
     end
+    def Iconv.gb180302eucjp(str)
+      return (Iconv.safe_iconv(CODESET_EUCJP, CODESET_GB18030, str))[0]
+    end
   end
   
   def open_ro(file)
@@ -491,8 +499,10 @@ EOM
       @probability = nil
       @spam_flag = nil
       @dirty = false
+      @time = nil
+      @filename = "-"
     end
-    attr_accessor :hash, :file_count, :probability, :language, :spam_flag, :message_id
+    attr_accessor :hash, :file_count, :probability, :language, :spam_flag, :message_id, :time, :filename
     
     def size
       @hash.size
@@ -540,6 +550,9 @@ EOM
     def add_db(db)
       @dirty = true
       @file_count += db.file_count
+      if (! @language && db.language)
+        @language = db.language
+      end
       @hash.add(db.hash)
     end
     
@@ -683,7 +696,11 @@ EOM
       @lockfh = File::open(@lockfile, "w+")
       case mode
       when "r"
-        @lockfh.flock(File::LOCK_SH)
+        begin
+          @lockfh.flock(File::LOCK_SH)
+        rescue Errno::EINVAL ## Win9x doesn't support LOCK_SH
+          @lockfh.flock(File::LOCK_EX)
+        end
       when "w", "wr", "rw"
         @lockfh.flock(File::LOCK_EX)
       else
@@ -796,76 +813,156 @@ EOM
       BDB1::Hash.open(filename, BDB1::CREATE | BDB1::WRITE, mode)
     end
   end
-  
-  def get_lang(buf)
-    reg_euc = Regexp::compile("[\xa4\xa1-\xa4\xaf\xa1\xa3]", nil, 'e') # hiragana in euc-jp
-    reg_sjis = Regexp::compile("[\x82\x9f-\x82\xaa\x81\x42]", nil, 's') # hiragana in shift-jis
-    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
-    
-    reg_char_ja = Regexp::compile('(^\w+: .*|charset="?)(iso-2022-jp|x.sjis|shift.jis|euc.jp)', Regexp::IGNORECASE, 'n')
-    reg_char_utf8 = Regexp::compile('(^\w+: .*|charset="?)(utf-8)', Regexp::IGNORECASE, 'n')
-    reg_cte_bin = Regexp::compile('\Acontent-transfer-encoding\s*:\s*(base64|quoted-printable)', Regexp::IGNORECASE, 'n')
-    reg_c = Regexp::compile('(^\w+: .*|charset="?)(ks_c_5601|euc-kr|big5|gb2312)', Regexp::IGNORECASE, 'n')
 
-    found_reg_euc = false
-    found_reg_sjis = false
-    found_char_utf8 = false
-    found_cte_bin = false
-
-    buf.each do |str|
-      case str
-      when reg_euc
-        found_reg_euc = true
-      when reg_sjis
-        found_reg_sjis = true
-      when reg_char_utf8
-        found_char_utf8 = true
-        if (found_char_utf8 && found_cte_bin)
-          Options["message-fh"].printf("lang ja char_utf8\n") if (Options["debug"])
-          return "ja"
-        end
-      when reg_cte_bin
-        found_cte_bin = true
-        if (found_char_utf8 && found_cte_bin)
-          Options["message-fh"].printf("lang ja char_utf8\n") if (Options["debug"])
-          return "ja"
-        end
-      when reg_char_ja
-        Options["message-fh"].printf("lang ja char_ja\n") if (Options["debug"])
-        return "ja"
-      when reg_c
-        Options["message-fh"].printf("lang C reg\n") if (Options["debug"])
-        return "C"
-      when reg_jis
-        Options["message-fh"].printf("lang ja jis\n") if (Options["debug"])
-        return "ja"
+  class TokenBDB < TokenDBM
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + BDB_ext
+      @lockfile = Options["homedir"] + language + ext + BDB_ext + Lock_ext
+      super
+    end
+    def clear
+      @file_count = 0
+      @dbm.close
+      begin
+        File::unlink(@filename)
+      rescue
+      end
+      @dbm = open_dbm(@filename, 0600)
+      if (Options["verbose"])
+        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
       end
     end
-    if (found_reg_euc && (! found_reg_sjis))
-      Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
-      return "ja"
-    elsif ((! found_reg_euc) && found_reg_sjis)
-      Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
-      return "ja"
+    def open_dbm(filename, mode)
+      BDB::Hash.open(filename, nil, BDB::CREATE, mode)
     end
-    Options["message-fh"].printf("lang C last\n") if (Options["debug"])
-    return "C"
+  end
+
+  class TokenQDBM < TokenDBM
+    def initialize(language, ext)
+      @filename = Options["homedir"] + language + ext + QDBM_ext
+      @lockfile = Options["homedir"] + language + ext + QDBM_ext + Lock_ext
+      super
+    end
+    def value(category, token)
+      begin
+        v = @dbm[category + MAGIC + token]
+      rescue DepotError_ENOITEM
+        return nil
+      else
+        return v.to_f
+      end
+    end
+    def add_hash(hash)
+      @dirty = true
+      hash.flatten(MAGIC) do |k, v|
+        begin
+          if (@dbm[k])
+            @dbm[k] = (@dbm[k].to_f + v.to_f).to_s
+          else
+            ## nerver reached. DepotError_ENOITEM asserted when @dbm[k] is nil
+            @dbm[k] = v.to_s
+          end
+        rescue DepotError_ENOITEM
+          @dbm[k] = v.to_s
+        end
+      end
+    end
+    def clear
+      @file_count = 0
+      @dbm.close
+      begin
+        File::unlink(@filename)
+      rescue
+      end
+      @dbm = open_dbm(@filename, 0600)
+      if (Options["verbose"])
+        Options["message-fh"].printf("reopen %s by %d.\n", @filename, Process::pid)
+      end
+    end
+    def open_dbm(filename, mode)
+      Depot::open(filename, Depot::OWRITER | Depot::OCREAT)
+    end
+  end
+
+  def get_lang_from_headers(headers)
+    reg_char_ja = Regexp::compile('\?(iso-2022-jp|iso-2202-jp|x.sjis|shift.jis|euc.jp)\?', Regexp::IGNORECASE, 'n')
+    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
+    [headers["from"], headers["subject"]].each do |str|
+      if (str)
+        case str
+        when reg_char_ja
+          Options["message-fh"].printf("lang ja header char_ja\n") if (Options["debug"])
+          return ["ja", nil]
+        when reg_jis
+          Options["message-fh"].printf("lang ja header jis\n") if (Options["debug"])
+          return ["ja", "jis"]
+        end
+      end
+    end
+    return nil
+  end
+
+  def get_lang_from_buf(buf, html_flag)
+    return get_lang(buf, html_flag)
+  end
+
+  def get_lang(buf, html_flag=false)
+    reg_euc = Regexp::compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}", nil, 'e') # kana in euc-jp without zenkaku-space
+    reg_sjis = Regexp::compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}", nil, 's') # kana in shift-jis
+    reg_utf8 = Regexp::compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}", nil, 'u') # kana in utf8
+    reg_jis = Regexp::compile("\\x1b\\x24[\\x42\\x40]", nil, 'n') # escape sequence to jisx0208 new and old
+    reg_gb18030_possible = Regexp::compile('[\x80-\x9f]', nil, 'n')
+    
+##    reg_char_utf8 = Regexp::compile('(^\w+: .*|charset="?)(utf-8)', Regexp::IGNORECASE, 'n')
+##    reg_cte_bin = Regexp::compile('\Acontent-transfer-encoding\s*:\s*(base64|quoted-printable)', Regexp::IGNORECASE, 'n')
+##    reg_c = Regexp::compile('(^\w+: .*|charset="?)(ks_c_5601|euc-kr|big5|gb2312)', Regexp::IGNORECASE, 'n')
+
+    gb18030_possible = false
+    buf.each do |str|
+      if (html_flag)
+        str = decode_character_reference2u(str)
+      end
+      if (str =~ reg_gb18030_possible)
+        gb18030_possible = true
+      end
+
+      case str.gsub(/\s/, '')
+      when reg_euc
+        Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
+        if (gb18030_possible)
+            return ["ja", "gb18030"]
+        else
+            return ["ja", "euc"]
+        end
+      when reg_sjis
+        Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
+        return ["ja", "sjis"]
+      when reg_utf8
+        Options["message-fh"].printf("lang ja utf8\n") if (Options["debug"])
+        return ["ja", "utf8"]
+      when reg_jis
+        Options["message-fh"].printf("lang ja jis\n") if (Options["debug"])
+        return ["ja", "jis"]
+      end
+    end
+    return [nil, nil]
   end
   
-  def get_headers(buf)
+  def get_headers(buf, lang)
     headers = DBHash::new
     buf = buf.dup
-    
+    header_buf = Array::new
     if ((buf[0] !~ /\Afrom\s+(\S+)/i) && # this isn't mail
         (buf[0] !~ /\A(\S+):/))
       if (Options["max-line"] <= 0)
-        return [headers, buf]
+        return [headers, buf, lang]
       else
-        return [headers, buf[0 .. Options["max-line"]]]
+        return [headers, buf[0 .. Options["max-line"]], lang]
       end
     end
     
     while (str = buf.shift)
+      header_buf.push(str)
       str = str.chomp
       if (str =~ /\A(\S+?):\s*(.*)/)
         current = $1.downcase
@@ -888,6 +985,7 @@ EOM
         end
       end
     end
+
     if ((headers["content-type"] =~ /\bboundary=\s*"(.*?)"/i) ||
         (headers["content-type"] =~ /\bboundary=\s*'(.*?)'/i) ||
         (headers["content-type"] =~ /\bboundary=([^\s;]+)/i))
@@ -901,9 +999,9 @@ EOM
     end
     
     if (Options["max-line"] <= 0)
-      return [headers, buf]
+      return [headers, buf, lang]
     else
-      return [headers, buf[0 .. Options["max-line"]]]
+      return [headers, buf[0 .. Options["max-line"]], lang]
     end
   end
   
@@ -1030,6 +1128,8 @@ EOM
   end
   
   def tokenize_headers(lang, headers)
+    (lang, code) = get_lang_from_headers(headers) if (! lang)
+
     head_db = TokenDB::new(lang)
     reg_token = Regexp::compile("\\b\\d[\\d\\.]+\\d\\b|[\\w#{Options['mark-in-token']}]+")
     
@@ -1064,7 +1164,7 @@ EOM
               ""
             end
           end
-          content = NKF::nkf('-e -X -Z0', content)
+          content = NKF::nkf('-e -X -Z0', content.gsub(/\?iso-2202-jp\?/i, '?ISO-2022-JP?'))
         else
           content = latin2ascii(content)
         end
@@ -1084,13 +1184,15 @@ EOM
   end
   
   def tokenize_buf(buf)
-    lang = get_lang(buf)
+    lang = nil                  # lang in unknown at first
     
     separators = Array::new
     delimiters = Array::new
-    (headers, buf) = get_headers(buf)
+    (headers, buf, lang) = get_headers(buf, lang)
     if (headers.empty?)           # this is not a mail
       (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
+      db.time = Time::new
+      db.language = "C" if (! db.language)
       return db
     end
     
@@ -1099,6 +1201,7 @@ EOM
     
     sub_head_db = TokenDB::new(lang)
     main_head_db = tokenize_headers(lang, headers) if (Options["use-header"])
+    lang = main_head_db.language
     
     found_html_part = false
     plain_bodies = Array::new
@@ -1111,6 +1214,7 @@ EOM
       if ((! headers["content-type"]) ||
           (headers["content-type"] !~ /rfc822/i))
         (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
+        lang = db.language
         if (headers["content-type"] =~ /html/i)
           found_html_part = true
           html_bodies.push(db)
@@ -1118,7 +1222,7 @@ EOM
           plain_bodies.push(db)
         end
       end
-      (headers, buf) = get_headers(buf)    
+      (headers, buf, lang) = get_headers(buf, lang)
       db = tokenize_headers(lang, headers) if (Options["use-header"])
       sub_head_db.add_db(db)
     end
@@ -1139,6 +1243,8 @@ EOM
     body_db.add_db(main_head_db) if (Options["use-header"])
     body_db.add_db(sub_head_db) if (Options["use-header"])
     body_db.file_count = 1
+    body_db.time = Time::new
+    body_db.language = "C" if (! body_db.language)
     return body_db
   end
   
@@ -1150,9 +1256,30 @@ EOM
     latin2ascii(Iconv.u2latin([i].pack("U")))
   end
   
+  def i2u(i)
+    [i].pack("U")
+  end
+
+  def decode_character_reference2u(str)
+    if (Options["utf-8"])
+      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
+        hex_or_dec = $1
+        if (hex_or_dec =~ /^x(.*)/i)
+          hex_str = $1
+          i2u(hex_str.hex)
+        else
+          i2u(hex_or_dec.to_i)
+        end
+      end
+    else
+      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i, "")
+    end
+    return newstr
+  end
+
   def decode_character_reference(str, lang)
     if (Options["utf-8"])
-      str.gsub!(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
+      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i) do
         hex_or_dec = $1
         if (hex_or_dec =~ /^x(.*)/i)
           hex_str = $1
@@ -1170,9 +1297,9 @@ EOM
         end
       end
     else
-      str.gsub!(/\&\#(\d{1,5}|x[\da-f]{1,4});/i, "")
+      newstr = str.gsub(/\&\#(\d{1,5}|x[\da-f]{1,4});/i, "")
     end
-    return str
+    return newstr
   end
   
   def tokenize_str(str, lang)
@@ -1256,14 +1383,30 @@ EOM
     when /quoted-printable/i
       buf.map! {|str| str.unpack("M*").to_s}
     end
+
+    lang_backup = lang
+    if (headers["content-type"] =~ /html/i)
+      (lang, code) = get_lang_from_buf(buf, true)
+    else
+      (lang, code) = get_lang_from_buf(buf, false)
+    end
+    if (! lang)
+      lang = lang_backup
+    end
+    db.language = lang
+
     str = buf.join
     
     if (lang == "ja")
-      if (str =~ RE_UTF8)
+      if (code == "utf8")
         if (Options["utf-8"])
           str = Iconv.u2eucjp(str)
         else
           lang = "C"              # can't use iconv / stop ja tokenizer
+        end
+      elsif (code == "gb18030")
+        if (Options["utf-8"])
+          str = Iconv.gb180302eucjp(str)
         end
       else
         str = NKF::nkf('-e -X -Z0', str)
@@ -1290,6 +1433,9 @@ EOM
       # remove <p style="font-size:0px..>
       str.gsub!(/(<p[^<>]*font-size\s*:\s*[01]\s*(;|px)[^<>]*>)([^<>]*)(<\/p>)/im, '')
       str.gsub!(/(<font[^<>]*font-size\s*:\s*[01]\s*(;|px)[^<>]*>)([^<>]*)(<\/font>)/im, '')
+
+      # remove <span style="DISPLAY: none..>
+      str.gsub!(/(<span[^<>]*display\s*:\s*none[^>]*>)([^<>]*)(<\/span>)/im, '')
       
       if (Options["ignore-after-last-atag"])
         if (str =~ /\A(.*)<\/a>/im)
@@ -1355,6 +1501,14 @@ EOM
         @clean = TokenBDB1::new(lang, Clean_ext)
         @spam = TokenBDB1::new(lang, Spam_ext)
         @prob = TokenBDB1::new(lang, Prob_ext)
+      when "bdb"
+        @clean = TokenBDB::new(lang, Clean_ext)
+        @spam = TokenBDB::new(lang, Spam_ext)
+        @prob = TokenBDB::new(lang, Prob_ext)
+      when "qdbm"
+        @clean = TokenQDBM::new(lang, Clean_ext)
+        @spam = TokenQDBM::new(lang, Spam_ext)
+        @prob = TokenQDBM::new(lang, Prob_ext)
       end
       
       @language = lang
@@ -1719,7 +1873,7 @@ OPTIONS
 		check and/or study the first number of lines
 		default is #{Default_max_line}. 0 means all
 
-	--db sdbm|gdbm|bdb1
+	--db sdbm|gdbm|bdb1|bdb|qdbm
 		specify the name of database type
 		"sdbm" by default
 
@@ -1812,6 +1966,14 @@ OPTIONS
 		When mail is longer than the specified number, the mail is not filtered.
 		When 0 is specified, all mails are tested and filtered.
 		unit is byte. default is #{Default_pop_max_size}
+
+	--ssl
+		use POP over SSL with --pop option
+		use IMAP over SSL with --imap option
+
+	--ssl-cert filename|dirname
+		specify a filename of a certificate of a trusted CA or
+		a name of a directory of certificates
 
 	--method|-m g|r|rf
 		specify filtering method. "rf" by default
@@ -2038,8 +2200,18 @@ EOM
     end
     
     if (Options["imap"])
-      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+      if (Options["ssl"])
+        if (Options["ssl-cert"])
+          verify_mode = OpenSSL::SSL::VERIFY_PEER
+        else
+          verify_mode = nil
+        end
+        imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"], Options["ssl"], Options["ssl-cert"], verify_mode)
+      else
+        imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+      end
       imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+
       files.each do |mailbox|
         target_mailbox = mailbox
         target_mailbox = Options["imap-folder-clean"] if (Options["add-clean"] && Options["imap-folder-clean"])
@@ -2049,6 +2221,7 @@ EOM
           imapm = IMAPMessage::new(imap, uid)
           imapm.fetch_rfc822
           db = tokenize_buf(imapm.buf)
+          db.filename = uid
           update_token_db_one(db)
           updated = imapm.insert_rfc822_headers!((Options["add-spam"] || Options["sub-clean"]), nil)
           if (updated)
@@ -2074,6 +2247,7 @@ EOM
             mbox = Mbox::new(fh)
             while (buf = mbox.read)
               db = tokenize_buf(buf)
+              db.filename = file
               dbs.push(db)
               if (Options["pipe"])
                 insert_headers!(buf, (Options["add-spam"] || Options["sub-clean"]), nil) 
@@ -2340,6 +2514,8 @@ EOM
             pop_socket = TCPsocket.open(pop_server, pop_port)
           end
           print(pop_socket, " is connected\n") if (Options["verbose"])
+
+          pop_socket = get_ssl_socket(pop_socket, Options["ssl-cert"]) if (Options["ssl"])
           
           hello = socket_send_rec(nil, pop_socket)[0]
           hello.sub!(/(.*)\r/, "\\1(pop_proxy by bsfilter)\r")
@@ -2408,6 +2584,7 @@ EOM
     
   def check_options_for_pop!(options)
     error = false
+    options["icon_number"] = (options["icon-number"] || Default_icon_number).to_i
     options["pop-port"] = Default_pop_port if (! options["pop-port"])
     options["pop-proxy-if"] = Default_pop_proxy_if if (! options["pop-proxy-if"])
     options["pop-proxy-port"] = Default_pop_proxy_port if (! options["pop-proxy-port"])
@@ -2447,8 +2624,18 @@ EOM
   
   def do_imap(command_line_args, token_dbs)
     ret_code = CODE_CLEAN
-    imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+    if (Options["ssl"])
+      if (Options["ssl-cert"])
+        verify_mode = OpenSSL::SSL::VERIFY_PEER
+      else
+        verify_mode = nil
+      end
+      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"], Options["ssl"], Options["ssl-cert"], verify_mode)
+    else
+      imap = Net::IMAP::new(Options["imap-server"], Options["imap-port"])
+    end
     imap.auto_authenticate(Options["imap-auth"], Options["imap-user"], Options["imap-password"], Options["imap-auth-preference"])
+
     imap.select(Options["imap-folder-clean"]) if (Options["imap-folder-clean"]) # only for check
     imap.select(Options["imap-folder-spam"]) if (Options["imap-folder-spam"]) # only for check
     command_line_args.each do |mailbox|
@@ -2457,6 +2644,7 @@ EOM
         imapm = IMAPMessage::new(imap, uid)
         imapm.fetch_rfc822
         token_db = tokenize_buf(imapm.buf)
+        token_db.filename = uid
         DB[token_db.language].get_combined_probability(token_db)
         token_dbs.push(token_db)
         Options["message-fh"].printf("combined probability %s %d %f\n", mailbox, imapm.seqno, token_db.probability) if (Options["verbose"])
@@ -2567,14 +2755,48 @@ EOM
       end
 EOM
   end
-  
+
+  def setup_ssl_socket_timeout
+    OpenSSL::SSL::SSLSocket.class_eval <<EOM
+      def write_timeout(str)
+        timeout(SOCKET_TIMEOUT) do
+          return self.write(str)
+        end
+      end
+      def gets_timeout
+        timeout(SOCKET_TIMEOUT) do
+          return self.gets
+        end
+      end
+EOM
+  end
+
+  def get_ssl_socket(socket, cert=nil)
+    context = OpenSSL::SSL::SSLContext::new()
+
+    if (cert)
+      if (FileTest::file?(cert))
+        print(cert, " is used for SSL ca_file\n") if (Options["verbose"])
+        context.ca_file = cert
+      elsif (FileTest::directory?(cert))
+        print(cert, " is used for SSL ca_path\n") if (Options["verbose"])
+        context.ca_path = cert
+      end
+      context.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+    ssl = OpenSSL::SSL::SSLSocket::new(socket, context)
+    ssl.connect
+    print(ssl, " is connected\n") if (Options["verbose"])
+    return ssl
+  end
+
   def setup_tasktray
     eval <<EOM
     class MyForm < VRForm
       include VRTrayiconFeasible
       include VRMenuUseable
       LoadIcon = Win32API.new("user32", "LoadIcon", "II", "I")
-      EXCLAMATIONICON = LoadIcon.call(0, 32515)
+      EXCLAMATIONICON = LoadIcon.call(0, Options["icon_number"])
       
       def construct
         @traymenu = newPopupMenu
@@ -2643,6 +2865,9 @@ EOM
     parser = GetoptLong.new
     parser.ordering = GetoptLong::REQUIRE_ORDER
     parser.set_options(
+                       ["--icon-number", GetoptLong::REQUIRED_ARGUMENT],
+                       ["--ssl", GetoptLong::NO_ARGUMENT],
+                       ["--ssl-cert", GetoptLong::REQUIRED_ARGUMENT],
                        ["--pop", GetoptLong::NO_ARGUMENT],
                        ["--tasktray", GetoptLong::NO_ARGUMENT],
                        ["--pop-proxy-set", GetoptLong::REQUIRED_ARGUMENT],
@@ -2793,6 +3018,10 @@ EOM
       require 'gdbm'
     when "bdb1"
       require 'bdb1'
+    when "bdb"
+      require 'bdb'
+    when "qdbm"
+      require 'depot'
     else
       raise sprintf("unsupported db %s\n", options["db"])
     end
@@ -2850,6 +3079,15 @@ EOM
       require 'net/imap'
       setup_imap
     end
+    if (options["ssl"])
+      if (options["ssl-cert"])
+        if (! File::readable?(options["ssl-cert"]))
+          raise sprintf("can't read %s. check --ssl-cert option", options["ssl-cert"])
+        end
+      end
+      require "openssl"
+      setup_ssl_socket_timeout
+    end
     return options
   end
     
@@ -2890,13 +3128,14 @@ EOM
       raise "unknown spam_flag"
     end
     
-    Options["message-fh"].printf("%s %s %s %s %s %s\n",
-                       prot,
-                       token_db.language,
-                       filter_result,
-                       maintenance_command,
-                       Time::new.strftime("%Y%m%d%H%M%S"),
-                       token_db.message_id)
+    Options["message-fh"].printf("%s %s %s %s %s %s %s\n",
+                                 prot,
+                                 token_db.language,
+                                 filter_result,
+                                 maintenance_command,
+                                 token_db.time.strftime("%Y%m%d%H%M%S"),
+                                 token_db.message_id,
+                                 token_db.filename)
   end
 
   def spam?
@@ -2929,7 +3168,8 @@ EOM
       Options["message-fh"] = STDOUT
       # keep STDOUT in text mode
     end
-    Options["message-fh"].sync = true
+
+##    Options["message-fh"].sync = true
     
     Options['mark-in-token'] = Regexp::quote(Options['mark-in-token'])
     
@@ -3024,6 +3264,7 @@ EOM
             mbox = Mbox::new(fh)
             while (buf = mbox.read)
               token_db = tokenize_buf(buf)
+              token_db.filename = file
               DB[token_db.language].get_combined_probability(token_db)
               insert_headers!(buf, token_db.spam_flag, token_db.probability) 
               if (Options["pipe"])

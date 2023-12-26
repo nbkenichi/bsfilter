@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.22 2004/12/18 15:13:30 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.28 2005/07/18 12:43:19 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / е┘еде╕евеє е╣е╤ер е╒егеые┐</h1>
 
 <p class="icon">
@@ -30,13 +30,13 @@
 
 <h2>0. bsfilterд╚д╧</h2>
 <ul>
-<li>spamд╚бвд╜джд╟д╧д╩дд└╡┼Ўд╩еседеы(д│д╬е┌б╝е╕д╟д╧cleanд╚╕╞д╓)дЄ╝л╞░╚╜─ъд╣дые╒егеые┐</li>
+<li>spamд╚бвд╜джд╟д╧д╩дд└╡┼Ўд╩есб╝еы(д│д╬е┌б╝е╕д╟д╧cleanд╚╕╞д╓)дЄ╝л╞░╚╜─ъд╣дые╒егеые┐</li>
 <li>╞№╦▄╕ьд╦┬╨▒■д╖д╞ддды</li>
 <li>rubyд╟╜ёдлдьд╞ддды</li>
 <li>3╝я╬рд╬╗╚═╤╩¤╦бдмдвды<ul>
-	  <li><code>~/.procmailrc</code>┼∙длдщ╕╞д╙╜╨д╖бве╒ебедеы(==еседеы)дЄ│╪╜мбв╚╜─ъд╣ды</li>
-	  <li>IMAPд╦дшдъбве╡б╝е╨╞тд╬еседеыдЄ│╪╜мбв╚╜─ъд╣ды</li>
-	  <li>POP proxyд╚д╖д╞╞░║юд╖бвMUAдм╝ї┐од╣ды║▌д╦╚╜─ъд╣ды</li>
+	  <li><code>~/.procmailrc</code>┼∙длдщ╕╞д╙╜╨д╖бве╒ебедеы(==есб╝еы)дЄ│╪╜мбв╚╜─ъд╣ды</li>
+	  <li>IMAPд╦дшдъбве╡б╝е╨╞тд╬есб╝еыдЄ│╪╜мбв╚╜─ъд╣дыбг<strong>IMAP over SSLдте╡е▌б╝е╚</strong></li>
+	  <li>POP proxyд╚д╖д╞╞░║юд╖бвMUAдм╝ї┐од╣ды║▌д╦╚╜─ъд╣дыбг<strong>POP over SSLдте╡е▌б╝е╚</strong></li>
 </ul></li>
 <li>╞░║юд╧<a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">е╣е╤ерд╪д╬┬╨║Ў ---A Plan for Spam</a>бв
 <a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">е┘еде╕евеєе╒егеые┐д╬▓■┴▒ --- Better Bayesian Filtering</a>бв
@@ -63,7 +63,7 @@
 
 <h2><a id="download">2. е└ежеєеэб╝е╔/едеєе╣е╚б╝еы</a></h2>
 <ul>
-<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.6.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.8.tgz</strong></a></li>
 <li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVSевепе╗е╣</strong></a></li>
 </ul>
 <h3>2.1. UNIX╖╧д╬╛ь╣ч</h3>
@@ -75,14 +75,14 @@ OSбве╟еге╣е╚еъе╙ехб╝е╖ечеєд╦дшд├д╞д╧бвportsбвebuild┼∙д╬е╤е├е▒б╝е╕дм═╤░╒д╡дьд╞ддд
 
 <h2><a id="concept">3. д╢д├дпдъбвд╔джд╩д├д╞дддыд╬?</a></h2>
 <h3>3.1. ├▒╕ь(token)д╬spam│╬╬идлдщ╚╜─ъд╣ды</h3>
-<p>двдщдлд╕дсtokenд┤д╚д╬spam│╬╬идЄ╡сдсд╞дкднбвеседеыд╬├цд╦spam│╬╬ид╬╣тддtokenдм┬┐дп┤▐д▐дьд╞ддд┐дщбв
-д╜д╬еседеыдмspamд╟двдыд╚╚╜─ъд╣дыбг
+<p>двдщдлд╕дсtokenд┤д╚д╬spam│╬╬идЄ╡сдсд╞дкднбвесб╝еыд╬├цд╦spam│╬╬ид╬╣тддtokenдм┬┐дп┤▐д▐дьд╞ддд┐дщбв
+д╜д╬есб╝еыдмspamд╟двдыд╚╚╜─ъд╣дыбг
 </p>
 <p class="fig"><img src="judge.png" alt="spam│╬╬идлдщ╚╜─ъ" /></p>
 
 <h3>3.2. ╜р╚ўдм╔м═╫</h3>
 <p>╝┬║▌д╦╗╚═╤дЄ│л╗╧д╣ды┴░д╦бвspam│╬╬идЄ╡сдсдыд╚дддж╜р╚ўдм╔м═╫д╟двдыбг
-╚╜─ъ║╤д╬еседеы╞тд╬token╜╨╕╜▓є┐ЇдЄ╡сдсбвspam / (clean + spam)д╦дшдъ│╬╬идЄ╡сдсдыбг
+╚╜─ъ║╤д╬есб╝еы╞тд╬token╜╨╕╜▓є┐ЇдЄ╡сдсбвspam / (clean + spam)д╦дшдъ│╬╬идЄ╡сдсдыбг
 --add-clean, --add-spam, --updateд╚дддже│е▐еєе╔д╟╜р╚ўдЄ╣╘джбг
 </p>
 <p class="fig"><img src="prepare.png" alt="╜р╚ўдм╔м═╫" /></p>
@@ -90,7 +90,7 @@ OSбве╟еге╣е╚еъе╙ехб╝е╖ечеєд╦дшд├д╞д╧бвportsбвebuild┼∙д╬е╤е├е▒б╝е╕дм═╤░╒д╡дьд╞ддд
 <h2><a id="started">4. дфд├д╞д▀дшдж</a></h2>
 <h3>╜р╚ў</h3>
 <p>╝┬║▌д╦╚╜─ъд╣ды┴░д╦бве╟б╝е┐е┘б╝е╣дЄ╜р╚ўд╣ды╔м═╫дмдвдыбг</p>
-<p>1. cleanд╩еседеы├цд╬├▒╕ьдЄ┐Їдидыбг</p>
+<p>1. cleanд╩есб╝еы├цд╬├▒╕ьдЄ┐Їдидыбг</p>
 <pre>
 % bsfilter --add-clean ~/Mail/inbox/*
 </pre>
@@ -105,13 +105,13 @@ OSбве╟еге╣е╚еъе╙ехб╝е╖ечеєд╦дшд├д╞д╧бвportsбвebuild┼∙д╬е╤е├е▒б╝е╕дм═╤░╒д╡дьд╞ддд
 <p>░╩╛хд╟бв╜р╚ў╜к╬╗бг</p>
 
 <h3>╚╜─ъ</h3>
-<p>е│е▐еєе╔ещедеє░·┐Їд╟╚╜─ъ┬╨╛▌д╬еседеыдЄ╗╪─ъд╣ды╬убг0длдщ1д╬╚╧░╧д╟бвspam│╬╬идм╔╜╝ид╡дьдыбг</p>
+<p>е│е▐еєе╔ещедеє░·┐Їд╟╚╜─ъ┬╨╛▌д╬есб╝еыдЄ╗╪─ъд╣ды╬убг0длдщ1д╬╚╧░╧д╟бвspam│╬╬идм╔╜╝ид╡дьдыбг</p>
 <pre>
 % bsfilter ~/Mail/inbox/1
 combined probability /home/nabeken/Mail/inbox/1 1 0.012701
 </pre>
 
-<p>╔╕╜р╞■╬╧длдщ╚╜─ъ┬╨╛▌д╬еседеыдЄ╞■╬╧д╣ды╬убгspamд╬╛ь╣чбвexit statusдм0д╦д╩дыбг</p>
+<p>╔╕╜р╞■╬╧длдщ╚╜─ъ┬╨╛▌д╬есб╝еыдЄ╞■╬╧д╣ды╬убгspamд╬╛ь╣чбвexit statusдм0д╦д╩дыбг</p>
 <pre>
 ~% bsfilter &lt; ~/Mail/inbox/1 ; echo $status
 1
@@ -158,20 +158,20 @@ gray/.
 <li>filtering modeд╟--(synchronous-)auto-updateдм╗╪─ъд╡дьд╞дддыд╚днд╧╬у│░д╟бвspamд╬╚╜─ъбве╟б╝е┐е┘б╝е╣д╬╣╣┐╖бв╬╛╩¤дЄ╣╘джбг</li>
 </ul>
 <p>
-╔╕╜р╞■╬╧длдщеседеыдЄ═┐дибвspamдлд╔дждл╚╜─ъд╡д╗дыд╦д╧бвfiltering modeд╟1д╬╖┴╝░дЄ╗╚═╤д╣дыбг
+╔╕╜р╞■╬╧длдщесб╝еыдЄ═┐дибвspamдлд╔дждл╚╜─ъд╡д╗дыд╦д╧бвfiltering modeд╟1д╬╖┴╝░дЄ╗╚═╤д╣дыбг
 spamд╬╛ь╣чд╧бвexit statusдм0д╦д╩дыбг
 <code>~/.procmailrc</code>длдщ╕╞д╙╜╨д╣╛ь╣чд╧бв─╠╛ябвд│д╬╖┴╝░д╦д╩дыбг
 </p>
 <p>
-е│е▐еєе╔ещедеє░·┐Їд╟еседеыд╬е╒ебедеые═б╝ердЄ═┐дибвspamдлд╔дждл╚╜─ъд╡д╗ды║▌д╦д╧бвfiltering modeд╟2д╬╖┴╝░дЄ╗╚═╤д╣дыбг
-╩г┐Їд╬еседеыдЄ╞▒╗■д╦╚╜─ъд╣дыд│д╚дм╜╨═шдыбг╖ы▓╠д╧╔╕╜р╜╨╬╧д╦╔╜╝ид╡дьдыбг
+е│е▐еєе╔ещедеє░·┐Їд╟есб╝еыд╬е╒ебедеые═б╝ердЄ═┐дибвspamдлд╔дждл╚╜─ъд╡д╗ды║▌д╦д╧бвfiltering modeд╟2д╬╖┴╝░дЄ╗╚═╤д╣дыбг
+╩г┐Їд╬есб╝еыдЄ╞▒╗■д╦╚╜─ъд╣дыд│д╚дм╜╨═шдыбг╖ы▓╠д╧╔╕╜р╜╨╬╧д╦╔╜╝ид╡дьдыбг
 </p>
 
 <h3>е│е▐еєе╔░ь═ў</h3>
 <dl>
 <dt>--add-clean</dt>
 <dt>-c</dt>
-<dd>cleanд╩еседеы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣д╦┬нд╣бг</dd>
+<dd>cleanд╩есб╝еы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣д╦┬нд╣бг</dd>
 
 <dt>--add-spam</dt>
 <dt>-s</dt>
@@ -179,7 +179,7 @@ spamд╬╛ь╣чд╧бвexit statusдм0д╦д╩дыбг
 
 <dt>--sub-clean</dt>
 <dt>-C</dt>
-<dd>cleanд╩еседеы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣длдщ░·дпбг</dd>
+<dd>cleanд╩есб╝еы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣длдщ░·дпбг</dd>
 
 <dt>--sub-spam</dt>
 <dt>-S</dt>
@@ -187,7 +187,7 @@ spamд╬╛ь╣чд╧бвexit statusдм0д╦д╩дыбг
 
 <dt>--update</dt>
 <dt>-u</dt>
-<dd>tokenд┤д╚д╬clean/spam│╬╬идм╞■д├д╞дддые╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг-cбв-s┼∙д╚╞▒╗■д╦╗╚дядьд┐╛ь╣чд╧бвеседеы├цд╬tokenд╦д─ддд╞д╬д▀бв│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг</dd>
+<dd>tokenд┤д╚д╬clean/spam│╬╬идм╞■д├д╞дддые╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг-cбв-s┼∙д╚╞▒╗■д╦╗╚дядьд┐╛ь╣чд╧бвесб╝еы├цд╬tokenд╦д─ддд╞д╬д▀бв│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг</dd>
 
 <dt>--export-clean</dt>
 <dd>cleanд╩tokenдЄе╟б╝е┐е┘б╝е╣длдщ╞╚╝ле╒ейб╝е▐е├е╚д╬е╞ене╣е╚д╦еиепе╣е▌б╝е╚д╣дыбг</dd>
@@ -229,12 +229,12 @@ spam-cutoff 0.6
 <dt>--max-line number</dt>
 <dd>└ш╞мдлдщ╗╪─ъд╖д┐╣╘┐Їд╬╚╧░╧дЄбв╚╜─ъбв│╪╜мд╬┬╨╛▌д╦д╣дыбг</dd>
 
-<dt>--db sdbm|gdbm|bdb1</dt>
-<dd>е╟б╝е┐е┘б╝е╣д╬╖┴╝░дЄ╗╪─ъд╣дыбге╟е╒ейеые╚д╧sdbmбг<strong>marshalд╬е╡е▌б╝е╚д╧1.0.5длдщ─ф╗▀бг</strong></dd>
+<dt>--db sdbm|gdbm|bdb1|bdb|qdbm</dt>
+<dd>е╟б╝е┐е┘б╝е╣д╬╖┴╝░дЄ╗╪─ъд╣дыбге╟е╒ейеые╚д╧sdbmбг<strong>bdb, qdbmд╬е╡е▌б╝е╚д╧1.0.8длдщбг</strong></dd>
 
 <dt>--jtokenizer bigram|block|mecab|chasen|kakasi</dt>
 <dt>-j bigram|block|mecab|chasen|kakasi</dt>
-<dd>╞№╦▄╕ьд╬еседеыдлдщtokenдЄ└┌дъ╜╨д╣║▌д╬евеые┤еъе║ердЄ╗╪─ъд╣дыбг
+<dd>╞№╦▄╕ьд╬есб╝еыдлдщtokenдЄ└┌дъ╜╨д╣║▌д╬евеые┤еъе║ердЄ╗╪─ъд╣дыбг
 bigram(╧в┬│д╣ды┤┴╗·2╩╕╗·д╟1token)бв
 block(╧в┬│д╣ды┤┴╗·┴┤╔Їд╟1token)бв
 <a href="http://cl.aist-nara.ac.jp/~taku-ku/software/mecab/">MeCab(╧┬╔█╔є)</a>бв
@@ -256,7 +256,7 @@ Gary Robinson-Fisher╩¤╝░д╦╜┌д║дыдл(rf)дЄ╗╪─ъд╣дыбг
 
 <dt>--auto-update</dt>
 <dt>-a</dt>
-<dd>еседеыдмcleanдлspamдл╚╜─ъд╖бвд╜д╬╖ы▓╠д╦┤Ёд┼ддд╞еседеы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣д╦┬нд╖бв
+<dd>есб╝еыдмcleanдлspamдл╚╜─ъд╖бвд╜д╬╖ы▓╠д╦┤Ёд┼ддд╞есб╝еы├цд╬tokenдЄе╟б╝е┐е┘б╝е╣д╦┬нд╖бв
 │╬╬ие╟б╝е┐е┘б╝е╣дт╣╣┐╖д╣дыбг</dd>
 
 <dt>--disable-degeneration</dt>
@@ -268,11 +268,11 @@ Gary Robinson-Fisher╩¤╝░д╦╜┌д║дыдл(rf)дЄ╗╪─ъд╣дыбг
 
 <dt>--ignore-header</dt>
 <dt>-H</dt>
-<dd>еседеые╪е├е└дЄ╠╡╗ыд╣дыбг</dd>
+<dd>есб╝еые╪е├е└дЄ╠╡╗ыд╣дыбг</dd>
 
 <dt>--ignore-body</dt>
 <dt>-B</dt>
-<dd>URLбвеседеыеве╔еье╣░╩│░д╬еседеы╦▄╩╕дЄ╠╡╗ыд╣дыбг</dd>
+<dd>URLбвесб╝еыеве╔еье╣░╩│░д╬есб╝еы╦▄╩╕дЄ╠╡╗ыд╣дыбг</dd>
 
 <dt>--ignore-plain-text-part</dt>
 <dd>htmlд╬е╤б╝е╚дмдвды╛ь╣чбвplain textд╬е╤б╝е╚дЄ╠╡╗ыд╣дыбг</dd>
@@ -296,42 +296,42 @@ Gary Robinson-Fisher╩¤╝░д╦╜┌д║дыдл(rf)дЄ╗╪─ъд╣дыбг
 ║╕д╬елещердлдщ"db"(╕╟─ъ)бв╕└╕ьбвclean tokenд╬┐Їбвclean mailд╬┐Їбвspam tokenд╬┐Їбвspam mailд╬┐Їбв│╬╬ие╟б╝е┐е┘б╝е╣╞тд╬token┐ЇдЄ░╒╠гд╣дыбг</dd>
 
 <dt>--mbox</dt>
-<dd>mbox╖┴╝░дЄе╡е▌б╝е╚бгд╥д╚д─д╬е╒ебедеыдЄбв"unix from"д╟╢ш└┌дщдьд┐╩г┐Їд╬еседеыд╚д╖д╞░╖джбг</dd>
+<dd>mbox╖┴╝░дЄе╡е▌б╝е╚бгд╥д╚д─д╬е╒ебедеыдЄбв"unix from"д╟╢ш└┌дщдьд┐╩г┐Їд╬есб╝еыд╚д╖д╞░╖джбг</dd>
 
 <dt>--max-mail number</dt>
-<dd>token database├цд╬еседеыд╬┐Їдмд│д╬├═дЄ▒█дид┐дщбвtoken databaseдЄ╜╠╛од╣дыбге╟е╒ейеые╚д╧10000бг</dd>
+<dd>token database├цд╬есб╝еыд╬┐Їдмд│д╬├═дЄ▒█дид┐дщбвtoken databaseдЄ╜╠╛од╣дыбге╟е╒ейеые╚д╧10000бг</dd>
 
 <dt>--min-mail number</dt>
 <dd>token database├цд╬token┼╨╛ь▓є┐Їд╦бв(min-mailд╟╗╪─ъд╖д┐┐Ї/max-mailд╟╗╪─ъд╖д┐┐Ї)дЄ│▌д▒дыд│д╚д╦дшдъбвtoken databaseд╬╜╠╛одЄ╣╘джбг
 е╟е╒ейеые╚д╧8000бг</dd>
 
 <dt>--pipe</dt>
-<dd>еседеыдЄstdoutд╦╜╨╬╧д╣дыбг</dd>
+<dd>есб╝еыдЄstdoutд╦╜╨╬╧д╣дыбг</dd>
 
 <dt>--insert-flag</dt>
-<dd>stdoutд╦╜╨╬╧д╣дыеседеыд╬е╪е├е└д╦"X-Spam-Flag: Yes"дл"X-Spam-Flag: No"дЄ─╔▓├д╣дыбг
+<dd>stdoutд╦╜╨╬╧д╣дыесб╝еыд╬е╪е├е└д╦"X-Spam-Flag: Yes"дл"X-Spam-Flag: No"дЄ─╔▓├д╣дыбг
 filtering modeд╬║▌д╦д╧╚╜─ъ╖ы▓╠д╦┤Ёд┼днбвmaintenance modeд╬║▌д╦д╧е│е▐еєе╔д╦┤Ёд┼днбв─╔▓├д╣дыбг</dd>
 
 <dt>--insert-probability</dt>
-<dd>stdoutд╦╜╨╬╧д╣дыеседеыд╬е╪е├е└д╦бв"X-Spam-Probability: number"дЄ─╔▓├д╣дыбгfiltering modeд╟д╬д▀═н╕·бг</dd>
+<dd>stdoutд╦╜╨╬╧д╣дыесб╝еыд╬е╪е├е└д╦бв"X-Spam-Probability: number"дЄ─╔▓├д╣дыбгfiltering modeд╟д╬д▀═н╕·бг</dd>
 
 <dt>--insert-revision</dt>
-<dd>stdoutд╦╜╨╬╧д╣дыеседеыд╬е╪е├е└д╦бв"X-Spam-Revision: bsfilter..."дЄ─╔▓├д╣дыбгfiltering modeд╟д╬д▀═н╕·бг</dd>
+<dd>stdoutд╦╜╨╬╧д╣дыесб╝еыд╬е╪е├е└д╦бв"X-Spam-Revision: bsfilter..."дЄ─╔▓├д╣дыбгfiltering modeд╟д╬д▀═н╕·бг</dd>
 
 <dt>--header-prefix string</dt>
-<dd>еседеыд╬е╪е├е└д╦бв"X-Spam-..."д╟д╧д╩дпбв"X-╗╪─ъд╖д┐╩╕╗·╬є-..."дЄ─╔▓├д╣дыбг</dd>
+<dd>есб╝еыд╬е╪е├е└д╦бв"X-Spam-..."д╟д╧д╩дпбв"X-╗╪─ъд╖д┐╩╕╗·╬є-..."дЄ─╔▓├д╣дыбг</dd>
 
 <dt>--mark-spam-subject</dt>
-<dd>spamд╬╛ь╣чбвеседеыд╬Subjectе╪е├е└д╦"[SPAM] "дЄ┴▐╞■д╣дыбг</dd>
+<dd>spamд╬╛ь╣чбвесб╝еыд╬Subjectе╪е├е└д╦"[SPAM] "дЄ┴▐╞■д╣дыбг</dd>
 
 <dt>--spam-subject-prefix string</dt>
-<dd>еседеыд╬Subjectе╪е├е└д╦"[SPAM] "д╟д╧д╩дпбв╗╪─ъд╖д┐╩╕╗·╬єдЄ┴▐╞■д╣дыбг</dd>
+<dd>есб╝еыд╬Subjectе╪е├е└д╦"[SPAM] "д╟д╧д╩дпбв╗╪─ъд╖д┐╩╕╗·╬єдЄ┴▐╞■д╣дыбг</dd>
 
 <dt>--list-clean</dt>
-<dd>cleanд╚╚╜─ъд╡дьд┐е╒ебедеые═б╝ердЄ╔╜╝ид╣дыбг╚╜─ъ┬╨╛▌д╬еседеыдЄе│е▐еєе╔ещедеє░·┐Їд╟═┐дид┐╛ь╣чд╬д▀═н╕·бг</dd>
+<dd>cleanд╚╚╜─ъд╡дьд┐е╒ебедеые═б╝ердЄ╔╜╝ид╣дыбг╚╜─ъ┬╨╛▌д╬есб╝еыдЄе│е▐еєе╔ещедеє░·┐Їд╟═┐дид┐╛ь╣чд╬д▀═н╕·бг</dd>
 
 <dt>--list-spam</dt>
-<dd>spamд╚╚╜─ъд╡дьд┐е╒ебедеые═б╝ердЄ╔╜╝ид╣дыбг╚╜─ъ┬╨╛▌д╬еседеыдЄе│е▐еєе╔ещедеє░·┐Їд╟═┐дид┐╛ь╣чд╬д▀═н╕·бг</dd>
+<dd>spamд╚╚╜─ъд╡дьд┐е╒ебедеые═б╝ердЄ╔╜╝ид╣дыбг╚╜─ъ┬╨╛▌д╬есб╝еыдЄе│е▐еєе╔ещедеє░·┐Їд╟═┐дид┐╛ь╣чд╬д▀═н╕·бг</dd>
 
 <dt>--help</dt>
 <dt>-h</dt>
@@ -350,8 +350,8 @@ filtering modeд╬║▌д╦д╧╚╜─ъ╖ы▓╠д╦┤Ёд┼днбвmaintenance modeд╬║▌д╦д╧е│е▐еєе╔д╦┤Ёд┼дн
 </dl>
 
 <h2><a id="imap">7. ╗╚дд╩¤(IMAP╩╘)</a></h2>
-<p>IMAPд╟е╡б╝е╨д╚─╠┐од╖бве╡б╝е╨д╦╩▌┬╕д╖д╞дддыеседеыдЄ│╪╜мбв╚╜─ъд╣дыд│д╚дмд╟дндыбг
-╚╜─ъ╖ы▓╠д╦╜╛ддбве╪е├е└дЄ┴▐╞■д╣дыд│д╚бв╗╪─ъд╖д┐е╒ейеые└д╦еседеыдЄ░▄╞░д╣дыд╣дыд│д╚дм▓─╟╜д╟двдыбг
+<p>IMAPд╟е╡б╝е╨д╚─╠┐од╖бве╡б╝е╨д╦╩▌┬╕д╖д╞дддыесб╝еыдЄ│╪╜мбв╚╜─ъд╣дыд│д╚дмд╟дндыбг
+╚╜─ъ╖ы▓╠д╦╜╛ддбве╪е├е└дЄ┴▐╞■д╣дыд│д╚бв╗╪─ъд╖д┐е╒ейеые└д╦есб╝еыдЄ░▄╞░д╣дыд╣дыд│д╚дм▓─╟╜д╟двдыбг
 </p>
 <p class="fig"><img src="imap.png" alt="IAMPе╡б╝е╨д╚─╠┐о" /></p>
 
@@ -380,19 +380,25 @@ auto(cram-md5бвloginбвlogincд╬╜чд╟┼м┼Ўд╩╩¤╦бдЄ┴к┬Є)дм╗╪─ъ▓─╟╜бге╟е╒ейеые╚д╧autoб
 <dd>IMAPе╡б╝е╨д╬passwordдЄ╗╪─ъд╣дыбг╔м┐▄бг</dd>
 
 <dt>--imap-folder-clean folder_name</dt>
-<dd>cleanд╚д╖д╞│╪╜мд╖д┐еседеыбвcleanд╚д╖д╞╚╜─ъд╡дьд┐еседеыдЄ░▄╞░д╣ды└шд╬е╒ейеые└дЄ╗╪─ъд╣дыбг</dd>
+<dd>cleanд╚д╖д╞│╪╜мд╖д┐есб╝еыбвcleanд╚д╖д╞╚╜─ъд╡дьд┐есб╝еыдЄ░▄╞░д╣ды└шд╬е╒ейеые└дЄ╗╪─ъд╣дыбг</dd>
 
 <dt>--imap-folder-spam folder_name</dt>
-<dd>spamд╚д╖д╞│╪╜мд╖д┐еседеыбвspamд╚д╖д╞╚╜─ъд╡дьд┐еседеыдЄ░▄╞░д╣ды└шд╬е╒ейеые└дЄ╗╪─ъд╣дыбг</dd>
+<dd>spamд╚д╖д╞│╪╜мд╖д┐есб╝еыбвspamд╚д╖д╞╚╜─ъд╡дьд┐есб╝еыдЄ░▄╞░д╣ды└шд╬е╒ейеые└дЄ╗╪─ъд╣дыбг</dd>
 
 <dt>--imap-fetch-unseen</dt>
-<dd>SEENе╒еще░дм╔╒ддд╞ддд╩ддеседеыд╬д▀дЄ│╪╜мбв╚╜─ъд╬┬╨╛▌д╚д╣дыд╚дн╗╚═╤д╣дыбг</dd>
+<dd>SEENе╒еще░дм╔╒ддд╞ддд╩ддесб╝еыд╬д▀дЄ│╪╜мбв╚╜─ъд╬┬╨╛▌д╚д╣дыд╚дн╗╚═╤д╣дыбг</dd>
 
 <dt>--imap-fetch-unflagged</dt>
-<dd>X-Spam-Flagе╪е├е└дм╔╒ддд╞ддд╩ддеседеыд╬д▀дЄ│╪╜мбв╚╜─ъд╬┬╨╛▌д╚д╣дыд╚дн╗╚═╤д╣дыбг</dd>
+<dd>X-Spam-Flagе╪е├е└дм╔╒ддд╞ддд╩ддесб╝еыд╬д▀дЄ│╪╜мбв╚╜─ъд╬┬╨╛▌д╚д╣дыд╚дн╗╚═╤д╣дыбг</dd>
 
 <dt>--imap-reset-seen-flag</dt>
-<dd>bsfilterдме╪е├е└дЄ┴▐╞■д╖д┐еседеыбв╩╠д╬е╒ейеые└д╦░▄╞░д╖д┐еседеыд╬SEENе╒еще░дЄеъе╗е├е╚д╣дыбг</dd>
+<dd>bsfilterдме╪е├е└дЄ┴▐╞■д╖д┐есб╝еыбв╩╠д╬е╒ейеые└д╦░▄╞░д╖д┐есб╝еыд╬SEENе╒еще░дЄеъе╗е├е╚д╣дыбг</dd>
+
+<dt><strong>--ssl</strong></dt>
+<dd>--imap-serverд╟╗╪─ъд╖д┐е╡б╝е╨д╚д╬┤╓д╟IMAP over SSLдЄ╗╚═╤д╣дыбг</dd>
+
+<dt><strong>--ssl-cert filename|dirname</strong></dt>
+<dd>IMAP over SSLд╬║▌д╦╗╚═╤д╣ды╛┌╠└╜ёдЄ╗╪─ъд╣дыбг</dd>
 </dl>
 
 <h3>--imapдЄ╗╚═╤д╖д╞ддды╛ь╣чд╦╠╡╕·д╩еке╫е╖ечеє</h3>
@@ -401,20 +407,40 @@ auto(cram-md5бвloginбвlogincд╬╜чд╟┼м┼Ўд╩╩¤╦бдЄ┴к┬Є)дм╗╪─ъ▓─╟╜бге╟е╒ейеые╚д╧autoб
 <h3>╗╚═╤╬у</h3>
 <p>bsfilter.confд╬╬у</p>
 <pre>
-imap-server server.example.com
+imap-server imap.example.com
 imap-auth login
 imap-user hanako
 imap-password open_sesame
 </pre>
-<p>inboxд╬├цд╬X-Spam-Flagдмд─ддд╞ддд╩ддеседеыдЄ╚╜─ъд╖бв╚╜─ъ╖ы▓╠дЄе╪е├е└д╦╞■дьбвspamд╬╛ь╣чд╧inbox.spamд╦░▄╞░д╣ды╬у</p>
+<p>inboxд╬├цд╬X-Spam-Flagдмд─ддд╞ддд╩ддесб╝еыдЄ╚╜─ъд╖бв╚╜─ъ╖ы▓╠дЄе╪е├е└д╦╞■дьбвspamд╬╛ь╣чд╧inbox.spamд╦░▄╞░д╣ды╬у</p>
 <pre>
 % bsfilter --imap --imap-fetch-unflagged --insert-flag --insert-probability --imap-folder-spam inbox.spam inbox
 </pre>
 
 <h2><a id="pop">8. ╗╚дд╩¤(POP proxy╩╘)</a></h2>
-<p>POP proxyд╚д╖д╞╞░║юд╖бвMUAдме╡б╝е╨длдщPOPд╟╝ї┐од╣ды╖╨╧йд╬┼╙├цд╟бвеседеыдЄ╚╜─ъд╖бве╪е├е└дЄ┴▐╞■д╣дыд│д╚дм▓─╟╜д╟двдыбг--auto-updateд╦дшды╝л╞░│╪╜мд╧╣╘дидыдмбв--add-cleanбв--add-spamд╦дшды│╪╜мд╧╣╘дид╩ддбг
+<p>POP proxyд╚д╖д╞╞░║юд╖бвMUAдме╡б╝е╨длдщPOPд╟╝ї┐од╣ды╖╨╧йд╬┼╙├цд╟бвесб╝еыдЄ╚╜─ъд╖е╪е├е└дЄ┴▐╞■д╣дыд│д╚дм▓─╟╜д╟двдыбг--auto-updateд╦дшды╝л╞░│╪╜мд╧╣╘дидыдмбв--add-cleanбв--add-spamд╦дшды│╪╜мд╧╣╘дид╩ддбг
 </p>
-<p class="fig"><img src="pop.png" alt="POP proxyд╚д╖д╞╞░║ю" /></p>
+<p>pop.example.comд╬е▌б╝е╚110д╟POPе╡б╝е╨дм╞░ддд╞дддыд╚д╣дыбг</p>
+<p class="fig"><img src="pop-without-bsfilter.png" alt="bsfilterд╩д╖д╬POP" /></p>
+
+<p>
+bsfilterдмPOP proxyд╚д╖д╞╞░║юд╣дыбге╡б╝е╨д╚bsfilter┤╓бвbsfilterд╚MUA┤╓д╧POPдЄ╗╚═╤д╣дыбгbsfilter╞т╔Їд╟бвесб╝еыдЄ╚╜─ъд╖е╪е├е└дЄ┴▐╞■д╣дыбгд│д╬╛ь╣чд╧бв░╩▓╝д╬дшджеке╫е╖ечеєдЄ└▀─ъд╣ды(--pop-portд╬е╟е╒ейеые╚д╧110бв--pop-poryx-portд╬е╟е╒ейеые╚д╧10110д╩д╬д╟бв╛╩╬м▓─╟╜)бг
+</p>
+<pre>
+% bsfilter --pop --auto-update --insert-flag --insert-probability --pop-server pop.example.com --pop-port 110 --pop-proxy-port 10110
+</pre>
+<p class="fig"><img src="pop-with-bsfilter.png" alt="POP proxyд╚д╖д╞╞░║ю" /></p>
+
+<p>
+pops.exmaple.comдмPOP over SSLдЄ╗╚═╤д╖д╞ддды╛ь╣чд╧бве╡б╝е╨д╚bsfilter┤╓д╧POP over SSLбвbsfilterд╚MUA┤╓д╧POPдЄ╗╚═╤д╣дыбг<strong>(1.67.2.*░╩╣▀)</strong>
+</p>
+<pre>
+% bsfilter --ssl --pop --auto-update --insert-flag --insert-probability --pop-server pops.example.com --pop-port 995 --pop-proxy-port 10110
+</pre>
+<p class="fig"><img src="pops-with-bsfilter.png" alt="POP proxyд╚д╖д╞╞░║ю(SSL)" /></p>
+
+
+<h3>POPд╦┤╪д╣дыеке╫е╖ечеє</h3>
 
 <dl>
 <dt>--pop</dt>
@@ -452,42 +478,40 @@ POP proxyд╬еыб╝еыдЄ╡н╜╥д╣дыбг╩г┐Ї╡н╜╥д╟дндыбг--pop-server, --pop-port, --pop-pro
 </dl></dd>
 
 <dt>--pop-max-size number</dt>
-<dd>╗╪─ъд╖д┐е╨еде╚┐Ї░╩╛хд╬еседеыд╦д─ддд╞д╧╜ш═¤дЄе╨еде╤е╣д╖бв╚╜─ъбв│╪╜мд╬┬╨╛▌д╦д╖д╩ддбг
-0дЄ╗╪─ъд╣дыд╚бв┴┤д╞д╬е╒ебедеыдЄ╚╜─ъбв│╪╜мд╬┬╨╛▌д╦д╣дыбге╟е╒ейеые╚д╧30000(30Kbytes)бг</dd>
+<dd>╗╪─ъд╖д┐е╨еде╚┐Ї░╩╛хд╬есб╝еыд╦д─ддд╞д╧╜ш═¤дЄе╨еде╤е╣д╖бв╚╜─ъбв│╪╜мд╬┬╨╛▌д╦д╖д╩ддбг
+0дЄ╗╪─ъд╣дыд╚бв┴┤д╞д╬е╒ебедеыдЄ╚╜─ъбв│╪╜мд╬┬╨╛▌д╦д╣дыбге╟е╒ейеые╚д╧50000(50Kbytes)бг</dd>
 
 <dt>--pid-file filename</dt>
 <dd>Process IDдЄ╡н╧┐д╣дые╒ебедеые═б╝ердЄ╗╪─ъд╣дыбге╟е╒ейеые╚д╧бвbsfilterе█б╝ере╟егеьепе╚еъд╬bsfilter.pidбг</dd>
+
+<dt><strong>--ssl</strong></dt>
+<dd>--pop-serverд╟╗╪─ъд╖д┐е╡б╝е╨д╚д╬┤╓д╟POP over SSLдЄ╗╚═╤д╣дыбг</dd>
+
+<dt><strong>--ssl-cert filename|dirname</strong></dt>
+<dd>POP over SSLд╬║▌д╦╗╚═╤д╣ды╛┌╠└╜ёдЄ╗╪─ъд╣дыбг</dd>
+
 </dl>
 
 <h3>--popдЄ╗╚═╤д╖д╞ддды╛ь╣чд╦╠╡╕·д╩еке╫е╖ечеє</h3>
 <p>--pipeбв╡┌д╙бв--add-clean┼∙бв│╪╜мд╦┤╪д╣дые│е▐еєе╔бвеке╫е╖ечеєд╧╠╡╕·д╟двдыбг</p>
 
-<h3>╗╚═╤╬у</h3>
-<p>bsfilter.confд╬╬у</p>
-<pre>
-pop-server server.example.com
-pop-proxy-port 10110
-pop-user taro
-insert-flag
-insert-probability
-</pre>
-<p>bsfilterдЄ╡п╞░д╖д┐е█е╣е╚д╬е▄б╝е╚10110дЄевепе╗е╣д╣дыдшджд╦MUAд╬└▀─ъдЄ╩╤╣╣д╖бв░╩▓╝д╬дшджд╦bsfilterдЄ╡п╞░д╣дыбг
-MUAдмеседеыдЄ╝ї┐од╣дыд╚╚╜─ъ╖ы▓╠дмX-Spam-Flag, X-Spam-Probabilityе╪е├е└д╦╞■дыбг╚╜─ъ╖ы▓╠д╦╜╛ддбвbsfilterд╬е╟б╝е┐е┘б╝е╣дм╣╣┐╖д╡дьдыбг</p>
-<pre>
-% bsfilter --pop --auto-update
-</pre>
 
 <h2><a id="faq">9. FAQ</a></h2>
+<h3>Q. IMAP over SSLд╬║▌д╦╛┌╠└╜ёдЄ╗╪─ъд╣дыд╚░█╛я╜к╬╗д╣ды</h3>
+<p>ruby╔╕╜рещеде╓ещеъд╬net/imap.rbд╬╠ф┬ъбгruby-1.8.3░╩╣▀д╩дщ╠ф┬ъд╩ддд╧д║</p>
+
+<h3>Q. windowsд╟POP proxyд╚д╖д╞╗╚═╤д╣дыд╚есб╝еыдме╡б╝е╨длдщ╝шдьд╩дд</h3>
+<p>дкд╜дщдпruby-1.8.2 mswin32╚╟д╬╠ф┬ъ</p>
+
 <h3>Q. in `get_all_responses': Mailbox does not exist, or must be subscribed to. (Net::IMAP::NoResponseError)д╚ддджеиещб╝д╟═юд┴дыд╬д└д▒д╔</h3>
-<p>еседеые▄е├епе╣д╬╠╛┴░дм┤╓░уд├д╞дддыд╚╗╫дядьдыбгruby-1.8д╬imap.rbд╟░╩▓╝д╬дшджд╦д╖д╞─┤д┘дыд╚дшддбг</p>
+<p>есб╝еые▄е├епе╣д╬╠╛┴░дм┤╓░уд├д╞дддыд╚╗╫дядьдыбгruby-1.8д╬imap.rbд╟░╩▓╝д╬дшджд╦д╖д╞─┤д┘дыд╚дшддбг</p>
 <pre>
-% ruby /usr/local/lib/ruby/1.8/net/imap.rb --user=taro --auth=login imap-server.example.com
+% ruby /usr/local/lib/ruby/1.8/net/imap.rb --user=taro --auth=login imap.example.com
 password: ******
-taro@imap-server.example.com&gt; list
+taro@imap.example.com&gt; list
  INBOX.junk
  INBOX
 </pre>
-
 
 <h3>Q. windowsд╟╗╚ддд┐ддд╬д└д▒д╔?</h3>
 <p>mswin32╚╟бвcygwin╚╟┼∙бв┤√д╦Rubyдмедеєе╣е╚б╝еы║╤д▀д╬╛ь╣чд╧бвbsfilterд╬е╜б╝е╣дЄ╔с─╠д╦╝┬╣╘д╣дьд╨дшддбг
@@ -496,12 +520,12 @@ Rubyдмедеєе╣е╚б╝еыд╡дьд╞ддд╩дд╛ь╣чд╧бвbsfilter.exeбвbsfilterw.exeдЄ╗╚═╤д╣дыд╬дм┤
 <li>е│е▐еєе╔е╫еэеєе╫е╚д╟бве╟б╝е┐е┘б╝е╣д╬┤╔═¤┼∙дЄ╣╘дж╛ь╣чд╧бвbsfilter.exeдмдк┴ждсбг</li>
 <li>е╣е┐б╝е╚еве├е╫д╟pop proxyд╚д╖д╞╞░║юд╡д╗ды╛ь╣чд╧бвbsfilterw.exeдмдк┴ждсбг
 --verbose, --debug, --show-new-token┼∙бвесе├е╗б╝е╕дЄ╜╨╬╧д╣дыеке╫е╖ечеєд╧╗╚═╤д╟днд╩ддбг
-еке╫е╖ечеєбв░·┐Їд╩д╖д╟╡п╞░д╣дыд╚бв╔╕╜р╞■╬╧длдщеседеыдЄ╞╔дтджд╚д╖д╞еиещб╝д╣дыд╬д╧╗┼══бг</li>
+еке╫е╖ечеєбв░·┐Їд╩д╖д╟╡п╞░д╣дыд╚бв╔╕╜р╞■╬╧длдщесб╝еыдЄ╞╔дтджд╚д╖д╞еиещб╝д╣дыд╬д╧╗┼══бг</li>
 </ul>
 <p><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter└▀─ъесет(Windows╩╘)</a>дм╛▄д╖ддбг</p>
 
 <h3>Q. exit statusд╧д╔д╬дшджд╦д╩д├д╞ддды?</h3>
-<p>─╠╛яд╧0бг--pipeеке╫е╖ечеєд╩д╖д╟╚╜─ъ┬╨╛▌еседеыдЄ╔╕╜р╞■╬╧длдщ═┐дид┐╛ь╣чд╬д▀бв╚╜─ъ╖ы▓╠дЄexit statusдлдщ╞└дыд│д╚дм╜╨═шдыбг
+<p>─╠╛яд╧0бг--pipeеке╫е╖ечеєд╩д╖д╟╚╜─ъ┬╨╛▌есб╝еыдЄ╔╕╜р╞■╬╧длдщ═┐дид┐╛ь╣чд╬д▀бв╚╜─ъ╖ы▓╠дЄexit statusдлдщ╞└дыд│д╚дм╜╨═шдыбг
 д╜д╬╛ь╣чбвspamд╧0бвcleanд╧1д╚ддджexit statusд╦д╩дыбг</p>
 
 <h3>Q. <code>No such file to load -- sdbm</code>д╚ддджеиещб╝дм╜╨дыбг</h3>
@@ -516,7 +540,7 @@ Rubyдмедеєе╣е╚б╝еыд╡дьд╞ддд╩дд╛ь╣чд╧бвbsfilter.exeбвbsfilterw.exeдЄ╗╚═╤д╣дыд╬дм┤
 <a href="http://lists.airs.net/wl/archive/200307/msg00049.html">Re: Mark &amp; Action (Re: 2╝я╬рд╬║я╜№е│е▐еєе╔)</a>длдщбг</p>
 
 <h3>Q. ╞№╦▄╕ьд╬╝шдъ░╖ддд╧?</h3>
-<p>еседеыдм╞№╦▄╕ьдл╚▌длдЄad hocд╦╚╜├╟д╖бв╞№╦▄╕ьдщд╖дн╛ь╣чд╧nkf.soд╟EUC
+<p>есб╝еыдм╞№╦▄╕ьдл╚▌длдЄad hocд╦╚╜├╟д╖бв╞№╦▄╕ьдщд╖дн╛ь╣чд╧nkf.soд╟EUC
 д╦╩╤┤╣д╖д╞дддыбгSubjectдф╦▄╩╕д╟ISO-2022-JPд╚╠╛╛шдъд─д─бв╝┬║▌д╬е│б╝е╔д╧
 shift jisд╚дддже▒б╝е╣дтбвnkfдм╡▀д├д╞дпдьд╞ддды╠╧══бгiconvдм╗╚дидьд╨бвunicodeдте╡е▌б╝е╚бг
 </p>
@@ -525,8 +549,8 @@ shift jisд╚дддже▒б╝е╣дтбвnkfдм╡▀д├д╞дпдьд╞ддды╠╧══бгiconvдм╗╚дидьд╨бвunicodeдте╡
 MeCab(╧┬╔█╔є)д╦дшды╖┴┬╓┴╟▓Є└╧дЄ╣╘джд╦д╧бвMeCabд╚rubyе╨едеєе╟егеєе░дЄедеєе╣е╚б╝еыд╖бв
 <code>--jtokenizer MeCab</code>дЄ╗╪─ъд╣дьд╨дшддбгChaSen, KAKASIд╦д─ддд╞дт╞▒══бг</p>
 
-<h3>Q. -aеке╫е╖ечеєдЄ╗╚═╤д╖д┐дщбвcleanд╩еседеыдЄspamд╚╕э╚╜─ъд╡дьд┐бг╕э╚╜─ъд╦┤Ёд┼дн╣╣┐╖д╡дьд┐е╟б╝е┐е┘б╝е╣д╦┬╨д╣ды┬╨╜шд╧?</h3>
-<p>╕э╚╜─ъд╡дьд┐еседеыдм<code>~/Mail/spam/123</code>д╟двдыд╩дщбв</p>
+<h3>Q. -aеке╫е╖ечеєдЄ╗╚═╤д╖д┐дщбвcleanд╩есб╝еыдЄspamд╚╕э╚╜─ъд╡дьд┐бг╕э╚╜─ъд╦┤Ёд┼дн╣╣┐╖д╡дьд┐е╟б╝е┐е┘б╝е╣д╦┬╨д╣ды┬╨╜шд╧?</h3>
+<p>╕э╚╜─ъд╡дьд┐есб╝еыдм<code>~/Mail/spam/123</code>д╟двдыд╩дщбв</p>
 <pre>
 % bsfilter --sub-spam --add-clean --update ~/Mail/spam/123 
 </pre>
@@ -541,15 +565,15 @@ clean token databaseд╦─╔▓├д╖бв│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыбг</p>
 <h3>Q. Paul Graham╩¤╝░бвGary Robinson╩¤╝░бвGary Robinson-Fisher╩¤╝░дЄ└┌дъ┬╪дидыд╦д╧?</h3>
 <p>Paul Graham╩¤╝░д╚бвGary RobinsonбвGary Robinson-Fisher╩¤╝░д╚д╬┤╓д╟└┌дъ┬╪дидыд╦д╧бв
 -uд╟spam│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыд╚д│дэдлдщдфдъ─╛д╣бгspam│╬╬ие╟б╝е┐е┘б╝е╣дЄ╣╣┐╖д╣дыд╚дн(maintenance mode)д╚бв
-еседеыдЄspamдл╚╜─ъд╡д╗дыд╚дн(filtering mode)д╚д╟бв╞▒д╕╩¤╝░дЄ-mеке╫е╖ечеєд╟╗╪─ъд╣ды╔м═╫дмдвдыбг</p>
+есб╝еыдЄspamдл╚╜─ъд╡д╗дыд╚дн(filtering mode)д╚д╟бв╞▒д╕╩¤╝░дЄ-mеке╫е╖ечеєд╟╗╪─ъд╣ды╔м═╫дмдвдыбг</p>
 <p>Gary Robinson╩¤╝░д╚бвGary Robinson-Fisher╩¤╝░д╬┤╓д╟└┌дъ┬╪дидыд╚днд╦д╧бв-uд╧╔╘═╫д╟двдыбг</p>
 <p>-cбв-sд╟tokenдЄ┐Їдидыд╚д│дэд╧╩¤╝░д╦░═┬╕д╖д╞ддд╩ддд╬д╟бвд╔д╬╛ь╣чдтдфдъ─╛д╣╔м═╫д╧д╩ддбг</p>
 
 <h3>Q. Paul Graham╩¤╝░д╚Gary Robinson╩¤╝░д╬░уддд╧?</h3>
-<p>tokenд┤д╚д╬spam│╬╬идЄ╡сдсды╩¤╦ббвд╜дьдЄ╗╚═╤д╖д╞еседеыд╬spam│╬╬идЄ╡сдсды╩¤╦ббв╬╛╩¤д╚дт░█д╩дыбг</p>
+<p>tokenд┤д╚д╬spam│╬╬идЄ╡сдсды╩¤╦ббвд╜дьдЄ╗╚═╤д╖д╞есб╝еыд╬spam│╬╬идЄ╡сдсды╩¤╦ббв╬╛╩¤д╚дт░█д╩дыбг</p>
 <p>Paul Graham╩¤╝░д╟д╬tokenд┤д╚д╬spam│╬╬идЄpg(w)д╚д╣дыбгpg(w)дЄ╡сдсды║▌д╬╞├─здЄ╡єд▓дыбг</p>
 <ul>
-<li>cleanд╩╩¤╕■д╦е╨едеве╣дЄдлд▒дыд┐дсд╦бвcleanд╩еседеы├цд╟д╬╝┬║▌д╬token╜╨╕╜▓є┐ЇдЄ2╟▄д╖д╞длдщбв╖╫╗╗д╣дыбг</li>
+<li>cleanд╩╩¤╕■д╦е╨едеве╣дЄдлд▒дыд┐дсд╦бвcleanд╩есб╝еы├цд╟д╬╝┬║▌д╬token╜╨╕╜▓є┐ЇдЄ2╟▄д╖д╞длдщбв╖╫╗╗д╣дыбг</li>
 <li>▓с╡юд╦╜╨▓ёд├д┐д│д╚д╬д╩ддtokenд╬pg(w)д╧бв0.4д╚д╣дыбг</li>
 </ul>
 <p>Gary Robinson╩¤╝░д╟д╬tokenд┤д╚д╬spam│╬╬идЄf(w)д╚д╣дыбг░╩▓╝д╬дшджд╦╡сдсдыбг</p>
@@ -562,8 +586,8 @@ f(w) = ((s * robx) + (n * p(w))) / (robs + n)
 д╚д╣дыбг▓с╡юд╦╜╨▓ёд├д┐д│д╚д╬д╩ддtokenд╬f(w)дтбвд│д╬╝░д╟еле╨б╝д╡дьдыбг</li>
 </ul>
 <p>Paul Graham╩¤╝░д╟д╧бв╞├─з┼кд╩(0.5дшдъ▒єдд)pg(w)дЄ╗¤д─15д╬tokenдЄ╗╚═╤д╖д╞combining probabilityдЄ╡сдсбв
-д╜дьдЄеседеыд╬spam│╬╬ид╚д╖д╞дддыбг</p>
-<p>Gary Robinson╩¤╝░д╟д╧бв░╩▓╝д╟╡сдсд┐SдЄеседеыд╬spam│╬╬ид╚д╣ды(bsfilterдм╔╜╝ид╣дыд╬д╧S2)бг</p>
+д╜дьдЄесб╝еыд╬spam│╬╬ид╚д╖д╞дддыбг</p>
+<p>Gary Robinson╩¤╝░д╟д╧бв░╩▓╝д╟╡сдсд┐SдЄесб╝еыд╬spam│╬╬ид╚д╣ды(bsfilterдм╔╜╝ид╣дыд╬д╧S2)бг</p>
 <pre>
 P = 1 - ((1 - f(w1)) * (1 - f(w2)) * ... * (1 - f(wn))) ^ (1 / n)
 Q = 1 - (f(w1) * f(w2) * ... * f(wn)) ^ (1 / n)
@@ -582,13 +606,13 @@ S = (1 + P' - Q') / 2
 </pre>
 
 <h2><a id="bug">10. е╨е░</a></h2>
-<p>utf-8д╩еседеыд╧д╔дєд╩дтд╬д╟двдьбв╞№╦▄╕ьд╬еседеыд╚д╖д╞░╖д├д╞д╖д▐джбг</p>
+<p>utf-8д╩есб╝еыд╧д╔дєд╩дтд╬д╟двдьбв╞№╦▄╕ьд╬есб╝еыд╚д╖д╞░╖д├д╞д╖д▐джбг</p>
 <p>
 е│е▐еєе╔ещедеє░·┐Їд╟бвmbox╖┴╝░д╬е╒ебедеыдЄ╗╪─ъд╣дыд│д╚дт▓─╟╜д╟двдыдмбв
 <code>Content-length</code>е╪е├е└дЄ╕лды╡б╟╜дмд╩ддбгд╜д╬д┐дсбвSolarisд╬дшджд╦
 ╦▄╩╕├цд╬"From"дмеие╣е▒б╝е╫д╡дьд╩дде╖е╣е╞ерд╟д╧бв╦▄╩╕├цд╬"From"дЄ
 UnixFromд╚╕л╕эдыд│д╚дм╣═дидщдьдыбг
-bsfilterдм╔╜╝ид╣дыеседеыд╬╚╓╣цд╚бвMUAд╟д╬╚╓╣цдм┐йдд░удж╛у│▓дм╚п└╕д╣дыд╚╗╫дядьдыбг
+bsfilterдм╔╜╝ид╣дыесб╝еыд╬╚╓╣цд╚бвMUAд╟д╬╚╓╣цдм┐йдд░удж╛у│▓дм╚п└╕д╣дыд╚╗╫дядьдыбг
 </p>
 <p>е│б╝е╔дм▒°ддбг</p>
 <p>bsfilterд╚дддж╠╛┴░дм░┬─╛бг</p>
@@ -602,14 +626,15 @@ bsfilterдм╔╜╝ид╣дыеседеыд╬╚╓╣цд╚бвMUAд╟д╬╚╓╣цдм┐йдд░удж╛у│▓дм╚п└╕д╣дыд╚╗╫дядьдыб
 
 <li>bsfilterд╦д─ддд╞<ul>
 <li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilterе╒ейб╝ещер</strong></a></li>
-<li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html"><strong>bsfilter</strong></a> qmailд╟╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
-<li><a href="http://www.wikiroom.com/mew/?Mew4FAQ"><strong>Mew4 FAQ</strong></a> mewдлдщPOP proxyд╚д╖д╞╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
+<li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html">bsfilter</a> qmailд╟╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
+<li><a href="http://www.wikiroom.com/mew/?Mew4FAQ">Mew4 FAQ</a> mewдлдщPOP proxyд╚д╖д╞╗╚дж╩¤╦бдм║▄д├д╞ддды</li>
 <li><a href="http://www.fkimura.com/bsfilter0.html">bsfilterдЄ╞│╞■═°═╤д╖д╞д▀дыесет</a></li>
 <li><a href="http://www.netlaputa.ne.jp/~kose/Emacs/200403.html#3.+spam+fi">Practice makes perfect</a></li>
 <li><a href="http://www.db.is.kyushu-u.ac.jp/computer/solarisserver/bsfilter.html">Solaris д╟д╬ bsfilter</a></li>
 <li><a href="http://www.imasy.or.jp/~tai/wiki/index.php?BsFilterHelper">BsFilterHelper</a></li>
 <li><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter└▀─ъесет(Windows╩╘)</a></li>
 <li><a href="http://www.pitecan.com/Lens/">Lens(есб╝еы┐╢дъ╩мд▒е╫еэе░ещер)</a> bsfilterдЄ╗╚═╤д╣дые╡еєе╫еыдм║▄д├д╞ддды</li>
+<li><a href="http://d.hatena.ne.jp/wakatono/20040324#p1">wakatonoд╬╡║дьесет</a> LensдлдщbsfilterдЄещеде╓ещеъд╚д╖д╞╗╚дж╬удм║▄д├д╞ддды</li>
 <li><a href="http://www.ganaware.jp/archives/000002.html">GANAware:IMAP</a>Mew4длдщ╗╚═╤д╣ды╩¤╦бдм║▄д├д╞ддды</li>
 <li><a href="http://megane.no-ip.info:8080/tiki/tiki.cgi?c=v&amp;p=bsfilter">H.Okada bsfilter</a></li>
 <li><a href="http://dir.itc.u-tokyo.ac.jp/~okabe/ja/bsfilter.shtml">е╣е╤ере╒егеые┐ BsFilter д╬└▀─ъ</a></li>

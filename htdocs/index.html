@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<p class="version">$Id: index.html,v 1.18 2004/08/13 18:13:32 nabeken Exp $</p>
+<p class="version">$Id: index.html,v 1.20 2004/10/24 06:16:53 nabeken Exp $</p>
 <h1>bsfilter / bayesian spam filter / ¥Ù¥¤¥¸¥¢¥ó ¥¹¥Ñ¥à ¥Õ¥£¥ë¥¿</h1>
 
 <p class="icon">
@@ -63,7 +63,7 @@
 
 <h2><a id="download">2. ¥À¥¦¥ó¥í¡¼¥É</a></h2>
 <ul>
-<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.4.tgz</strong></a></li>
+<li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.5.tgz</strong></a></li>
 <li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVS¥¢¥¯¥»¥¹</strong></a></li>
 </ul>
 
@@ -223,8 +223,8 @@ spam-cutoff 0.6
 <dt>--max-line number</dt>
 <dd>ÀèÆ¬¤«¤é»ØÄê¤·¤¿¹Ô¿ô¤ÎÈÏ°Ï¤ò¡¢È½Äê¡¢³Ø½¬¤ÎÂÐ¾Ý¤Ë¤¹¤ë¡£</dd>
 
-<dt>--db sdbm|gdbm|bdb1|marshal</dt>
-<dd>¥Ç¡¼¥¿¥Ù¡¼¥¹¤Î·Á¼°¤ò»ØÄê¤¹¤ë¡£¥Ç¥Õ¥©¥ë¥È¤Ïsdbm¡£<strong>marshal¤Î¥µ¥Ý¡¼¥È¤Ï¾­Íè¡¢Ää»ß¤µ¤ì¤ë¡£</strong></dd>
+<dt>--db sdbm|gdbm|bdb1</dt>
+<dd>¥Ç¡¼¥¿¥Ù¡¼¥¹¤Î·Á¼°¤ò»ØÄê¤¹¤ë¡£¥Ç¥Õ¥©¥ë¥È¤Ïsdbm¡£<strong>marshal¤Î¥µ¥Ý¡¼¥È¤Ï1.0.5¤«¤éÄä»ß¡£</strong></dd>
 
 <dt>--jtokenizer bigram|block|mecab|chasen|kakasi</dt>
 <dt>-j bigram|block|mecab|chasen|kakasi</dt>
@@ -493,13 +493,10 @@ Ruby¤¬¥¤¥ó¥¹¥È¡¼¥ë¤µ¤ì¤Æ¤¤¤Ê¤¤¾ì¹ç¤Ï¡¢bsfilter.exe¡¢bsfilterw.exe¤ò»ÈÍÑ¤¹¤ë¤Î¤¬´
 ¤½¤Î¾ì¹ç¡¢spam¤Ï0¡¢clean¤Ï1¤È¤¤¤¦exit status¤Ë¤Ê¤ë¡£</p>
 
 <h3>Q. <code>No such file to load -- sdbm</code>¤È¤¤¤¦¥¨¥é¡¼¤¬½Ð¤ë¡£</h3>
-<p>revision 1.32.4.4¤Ç¡¢¥Ç¥Õ¥©¥ë¥È¤Î¥Ç¡¼¥¿¥Ù¡¼¥¹·Á¼°¤¬sdbm¤ËÊÑ¹¹¤Ë¤Ê¤Ã¤¿¤¬¡¢
-¥Ç¥Õ¥©¥ë¥È¤Ç¤Ïsdbm¤ò»ÈÍÑ¤Ç¤­¤Ê¤¤¥×¥é¥Ã¥È¥Û¡¼¥à¤¬¤¢¤ë¡£
-ÂÐºö¤È¤·¤Æ¤Ï¡¢<code>--db marshal</code>¤ò»ØÄê¤·¤Æsdbm¤Î»ÈÍÑ¤ò»ß¤á¤ëÊýË¡¤¬¤¢¤ë¤¬¡¢¼Â¹ÔÂ®ÅÙ¤ÎÅÀ¤«¤é¤ªÁ¦¤á¤·¤Ê¤¤¡£
-sdbm¤¬»ÈÍÑ¤Ç¤­¤ë¤è¤¦¤Ë¡¢Îã¤¨¤Ðdebian¤Î¾ì¹ç¤Ï¡¢libsdbm-ruby¤ò¥¤¥ó¥¹¥È¡¼¥ë¤¹¤ë¤³¤È¤ò¿ä¾©¤¹¤ë¡£</p>
+<p>sdbm¤ò»ÈÍÑ²ÄÇ½¤Ë¤¹¤ë¡£Îã¤¨¤Ðdebian¤Î¾ì¹ç¤Ï¡¢libsdbm-ruby¤ò¥¤¥ó¥¹¥È¡¼¥ë¤¹¤ë¡£</p>
 
-<h3>Q. mewÍÑ¤Î¥Õ¥í¥ó¥È¥¨¥ó¥É¤Ï¤¢¤ë?</h3>
-<p>¤¢¤ë¡£<a href="mew.html">bsfilter mew front-end</a>¤ò»²¾È¡£</p>
+<h3>Q. mew¤È°ì½ï¤Ë»È¤¦¤Ë¤Ï?</h3>
+<p><a href="mew.html">bsfilter with mew</a>¤ò»²¾È¡£</p>
 
 <h3>Q. Wanderlust¤«¤é»È¤¦¤Ë¤Ï?</h3>
 <p>¤ä¤Þ¤À¤¢¤­¤é¤µ¤ó¤¬wl-bsfilter.el¤ò¸ø³«Ãæ¡£ 

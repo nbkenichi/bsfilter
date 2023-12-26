@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.63 2004/07/30 16:49:10 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.65 2004/10/23 18:47:18 nabeken Exp $
 
 ## Copyright (C) 2003, 2004 NABEYA Kenichi
 ##
@@ -27,9 +27,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_4 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_5 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.63 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.65 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Options = Hash::new           # used like a global variable
   DB = Hash::new
@@ -62,7 +62,6 @@ class Bsfilter
   Prob_ext = ".prob"
   Lock_ext = ".lock"
   
-  Marshal_ext = ".db"
   SDBM_ext = ".sdbm"
   GDBM_ext = ".gdbm"
   BDB1_ext = ".bdb1"
@@ -290,7 +289,7 @@ EOM
       if (! FileTest::file?(file))
         raise sprintf("%s is not file", file)
       end
-      fh = open(file)
+      fh = open(file, "rb")
       yield fh
       fh.close
     end
@@ -300,7 +299,7 @@ EOM
     if (file == "-")
       fh = STDOUT
     else
-      fh = open(file, "w")
+      fh = open(file, "wb")
     end
     if (block)
       yield fh
@@ -769,86 +768,6 @@ EOM
     end
     def open_dbm(filename, mode)
       BDB1::Hash.open(filename, BDB1::CREATE | BDB1::WRITE, mode)
-    end
-  end
-  
-  class TokenMarshal < TokenDB
-    def initialize(language, ext)
-      @filename = Options["homedir"] + language + ext + Marshal_ext
-      @closed = true
-      @mode = nil
-      @lockfile = Options["homedir"] + language + ext + Marshal_ext + Lock_ext
-      @lockfh = nil
-      super(language)
-    end
-    
-    attr_accessor :filename, :mode
-    def closed?
-      @closed
-    end
-    
-    def open(mode="r")
-      @lockfh = File::open(@lockfile, "w+")
-      case mode
-      when "r"
-        @lockfh.flock(File::LOCK_SH)
-      when "w", "wr", "rw"
-        @lockfh.flock(File::LOCK_EX)
-      else
-        raise
-      end
-      
-      if (closed?)
-        @closed = false      
-      else
-        raise sprintf("already opened mode %s file %s", mode, @filename)
-      end
-      if (FileTest::file?(@filename) && (mode =~ /r/))
-        File::open(@filename) {|fh|
-          fh.flock(File::LOCK_SH)
-          (@hash, @file_count) = Marshal::load(fh)
-        }
-        if (Options["verbose"])
-          Options["message-fh"].printf("open %s %d tokens %d mails by %d.\n", @filename, key_cts.length, @file_count, Process::pid)
-        end
-      else
-        clear
-      end
-    end
-    
-    def close
-      if (closed?)
-        raise sprintf("already closed mode %s file %s", @mode, @filename)
-      end
-      if (@dirty)
-        @dirty = false
-        if (Options["verbose"])
-          Options["message-fh"].printf("close %s %d tokens %d mails by %d.\n", @filename, key_cts.length, @file_count, Process::pid)
-        end
-        if (Options["debug"])
-          pairs = key_cts.sort {|a, b| ((a[0] <=> b[0]) == 0) ? (a[1] <=> b[1]) :  (a[0] <=> b[0])}
-          pairs.each do |(category, token)|
-            Options["message-fh"].printf("%s %s %s %f\n", @filename, category, token, value(category, token))
-          end
-        end
-        File::open(@filename, File::WRONLY|File::CREAT|File::TRUNC, 0600) {|fh|
-          fh.flock(File::LOCK_EX)
-          Marshal::dump([@hash, @file_count], fh)
-        }
-      end
-      @closed = true
-      @lockfh.flock(File::LOCK_UN)
-      @lockfh.close
-      begin
-        File::unlink(@lockfile)
-      rescue
-      end
-    end
-    def clear
-      if (Options["verbose"])
-        Options["message-fh"].printf("clear %s\n", @filename)
-      end
-      super
     end
   end
   
@@ -1380,10 +1299,6 @@ EOM
     def initialize(lang)
       @filename = Options["homedir"] + lang + Prob_ext
       case (Options["db"])
-      when "marshal"
-        @clean = TokenMarshal::new(lang, Clean_ext)
-        @spam = TokenMarshal::new(lang, Spam_ext)
-        @prob = TokenMarshal::new(lang, Prob_ext)
       when "sdbm"
         @clean = TokenSDBM::new(lang, Clean_ext)
         @spam = TokenSDBM::new(lang, Spam_ext)
@@ -1760,7 +1675,7 @@ OPTIONS
 		check and/or study the first number of lines
 		default is #{Default_max_line}. 0 means all
 
-	--db sdbm|gdbm|bdb1|marshal
+	--db sdbm|gdbm|bdb1
 		specify the name of database type
 		"sdbm" by default
 
@@ -2817,7 +2732,6 @@ EOM
     
     options["db"] = Default_db if (! options["db"])
     case options["db"]
-    when "marshal"
     when "sdbm"
       require 'sdbm'
     when "gdbm"
@@ -2948,17 +2862,19 @@ EOM
 
     Options.update(get_options)
 
+    STDIN::binmode
     if (Options["quiet"])
       Options["message-fh"] = DevNull::new
     elsif (((Options["export-clean"] || Options["export-spam"] || Options["export-probability"]) &&
          ((ARGV.length == 0) || (ARGV[0] == "-"))) || # export to stdout
         Options["list-clean"] || Options["list-spam"] || Options["pipe"])
       Options["message-fh"] = STDERR
+      STDOUT::binmode
     else
       Options["message-fh"] = STDOUT
+      # keep STDOUT in text mode
     end
     Options["message-fh"].sync = true
-    Options["message-fh"].print("marshal is deprecated; use another database format\n") if (Options["db"] == "marshal")
     
     Options['mark-in-token'] = Regexp::quote(Options['mark-in-token'])
     

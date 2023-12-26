@@ -1,5 +1,5 @@
-# -*- coding: euc-jp -*-
-# -*-Ruby-*- $Id: test.rb,v 1.13 2013/11/03 08:26:42 nabeken Exp $
+# encoding: utf-8
+# -*-Ruby-*- $Id: test.rb,v 1.16 2023/12/26 05:54:06 nabeken Exp $
 
 load '../bsfilter/bsfilter'
 require 'test/unit'
@@ -14,13 +14,16 @@ class DummyFH
   attr_accessor :buf
   def sync=(*args)
   end
-  def print(*arg)
-    @buf.push(*arg.flatten.dup)
+  def print(*args)
+    @buf.push(*args.flatten.dup)
     @buf.map{|str| str.force_encoding('ASCII-8BIT')}
     @buf = @buf.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join}
   end
   def printf(format, *args)
     @buf.push(sprintf(format, *args))
+  end
+  def puts(*args)
+    @buf.push(*args.flatten.dup)
   end
 end
 
@@ -32,11 +35,7 @@ class Bsfilter
   end
 
   def grep_message(pattern)
-    if RUBY_VERSION < "1.9"
-      options["message-fh"].buf.grep(pattern)
-    else
-      options["message-fh"].buf.map{|str| str.force_encoding('EUC-JP')}.grep(pattern)
-    end
+    options["message-fh"].buf.map{|str| str.force_encoding('UTF-8')}.grep(pattern)
   end
 
   def count_message(pattern)
@@ -44,11 +43,7 @@ class Bsfilter
   end
 
   def grep_pipe(pattern)
-    if RUBY_VERSION < "1.9"
-      options["pipe-fh"].buf.grep(pattern)
-    else
-      options["pipe-fh"].buf.map{|str| str.force_encoding('EUC-JP')}.grep(pattern)
-    end
+    options["pipe-fh"].buf.map{|str| str.force_encoding('UTF-8')}.grep(pattern)
   end
 
   def count_pipe(pattern)
@@ -67,6 +62,9 @@ def safe_require(file)
 end
 
 def unlink_all
+  unlink_prob_ndbm({:force => true})
+  unlink_token_ndbm({:force => true})
+
   unlink_prob_sdbm({:force => true})
   unlink_token_sdbm({:force => true})
 
@@ -83,14 +81,34 @@ def unlink_all
   unlink_token_qdbm({:force => true})
 end
 
+def unlink_prob_ndbm(options = {})
+  FileUtils.rm(["C.prob.ndbm.db",
+                "C.prob.ndbm.lock",
+                "ja.prob.ndbm.db",
+                "ja.prob.ndbm.lock"], **options)
+end
+
+def unlink_token_ndbm(options = {})
+  FileUtils.rm(["C.clean.ndbm.db",
+                "C.clean.ndbm.lock",
+                "C.spam.ndbm.db",
+                "C.spam.ndbm.lock",
+                "ja.clean.ndbm.db",
+                "ja.clean.ndbm.lock",
+                "ja.spam.ndbm.db",
+                "ja.spam.ndbm.lock"], **options)
+end
+
+
 def unlink_prob_sdbm(options = {})
     FileUtils.rm(["C.prob.sdbm.dir",
                   "C.prob.sdbm.pag",
                   "C.prob.sdbm.lock",
                   "ja.prob.sdbm.dir",
                   "ja.prob.sdbm.pag",
-                  "ja.prob.sdbm.lock"], options)
+                  "ja.prob.sdbm.lock"], **options)
 end
+
 def unlink_token_sdbm(options = {})
     FileUtils.rm(["C.clean.sdbm.dir",
                   "C.clean.sdbm.pag",
@@ -103,7 +121,7 @@ def unlink_token_sdbm(options = {})
                   "ja.clean.sdbm.lock",
                   "ja.spam.sdbm.dir",
                   "ja.spam.sdbm.pag",
-                  "ja.spam.sdbm.lock"], options)
+                  "ja.spam.sdbm.lock"], **options)
 end
 
 
@@ -111,8 +129,9 @@ def unlink_prob_gdbm(options = {})
     FileUtils.rm(["C.prob.gdbm",
                   "C.prob.gdbm.lock",
                   "ja.prob.gdbm",
-                  "ja.prob.gdbm.lock"], options)
+                  "ja.prob.gdbm.lock"], **options)
 end
+
 def unlink_token_gdbm(options = {})
     FileUtils.rm(["C.clean.gdbm",
                   "C.clean.gdbm.lock",
@@ -121,16 +140,16 @@ def unlink_token_gdbm(options = {})
                   "C.spam.gdbm",
                   "C.spam.gdbm.lock",
                   "ja.spam.gdbm",
-                  "ja.spam.gdbm.lock"], options)
+                  "ja.spam.gdbm.lock"], **options)
 end
+
 
 def unlink_prob_bdb1(options = {})
     FileUtils.rm(["C.prob.bdb1",
                   "C.prob.bdb1.lock",
                   "ja.prob.bdb1",
-                  "ja.prob.bdb1.lock"], options)
+                  "ja.prob.bdb1.lock"], **options)
 end
-
 
 def unlink_token_bdb1(options = {})
     FileUtils.rm(["C.clean.bdb1",
@@ -140,14 +159,15 @@ def unlink_token_bdb1(options = {})
                   "C.spam.bdb1",
                   "C.spam.bdb1.lock",
                   "ja.spam.bdb1",
-                  "ja.spam.bdb1.lock"], options)
+                  "ja.spam.bdb1.lock"], **options)
 end
+
 
 def unlink_prob_bdb(options = {})
     FileUtils.rm(["C.prob.bdb",
                   "C.prob.bdb.lock",
                   "ja.prob.bdb",
-                  "ja.prob.bdb.lock"], options)
+                  "ja.prob.bdb.lock"], **options)
 end
 
 def unlink_token_bdb(options = {})
@@ -158,14 +178,14 @@ def unlink_token_bdb(options = {})
                   "C.spam.bdb",
                   "C.spam.bdb.lock",
                   "ja.spam.bdb",
-                  "ja.spam.bdb.lock"], options)
+                  "ja.spam.bdb.lock"], **options)
 end
 
 def unlink_prob_qdbm(options = {})
     FileUtils.rm(["C.prob.qdbm",
                   "C.prob.qdbm.lock",
                   "ja.prob.qdbm",
-                  "ja.prob.qdbm.lock"], options)
+                  "ja.prob.qdbm.lock"], **options)
 end
 
 def unlink_token_qdbm(options = {})
@@ -176,7 +196,7 @@ def unlink_token_qdbm(options = {})
                   "C.spam.qdbm",
                   "C.spam.qdbm.lock",
                   "ja.spam.qdbm",
-                  "ja.spam.qdbm.lock"], options)
+                  "ja.spam.qdbm.lock"], **options)
 end
 
 class TestMultipleInstances < Test::Unit::TestCase
@@ -237,17 +257,17 @@ class TestMultipleInstances < Test::Unit::TestCase
     @bsfilter2.run(@files)
     @bsfilter3.run(@files)
 
-    assert_equal(1, @bsfilter0.count_message(/tokenizer ja body Ä«´é/),  "@bsfilter0 2letters")
-    assert_equal(0, @bsfilter0.count_message(/tokenizer ja body ¸þÆü°ª/), "@bsfilter0 3letters")
+    assert_equal(1, @bsfilter0.count_message(/tokenizer ja body æœé¡”/),  "@bsfilter0 2letters")
+    assert_equal(0, @bsfilter0.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "@bsfilter0 3letters")
 
-    assert_equal(1, @bsfilter1.count_message(/tokenizer ja body Ä«´é/), "@bsfilter1 2letters")
-    assert_equal(1, @bsfilter1.count_message(/tokenizer ja body ¸þÆü°ª/), "@bsfilter1 3letters")
+    assert_equal(1, @bsfilter1.count_message(/tokenizer ja body æœé¡”/), "@bsfilter1 2letters")
+    assert_equal(1, @bsfilter1.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "@bsfilter1 3letters")
 
-    assert_equal(1, @bsfilter2.count_message(/tokenizer ja body Ä«´é/), "@bsfilter2 2letters")
-    assert_equal(0, @bsfilter2.count_message(/tokenizer ja body ¸þÆü°ª/), "@bsfilter2 3letters")
+    assert_equal(1, @bsfilter2.count_message(/tokenizer ja body æœé¡”/), "@bsfilter2 2letters")
+    assert_equal(0, @bsfilter2.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "@bsfilter2 3letters")
 
-    assert_equal(1, @bsfilter3.count_message(/tokenizer ja body Ä«´é/), "@bsfilter3 2letters")
-    assert_equal(1, @bsfilter3.count_message(/tokenizer ja body ¸þÆü°ª/), "@bsfilter3 3letters")
+    assert_equal(1, @bsfilter3.count_message(/tokenizer ja body æœé¡”/), "@bsfilter3 2letters")
+    assert_equal(1, @bsfilter3.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "@bsfilter3 3letters")
   end
 
   def teardown
@@ -326,8 +346,8 @@ class TestJtokenizer < Test::Unit::TestCase
     @bsfilter.setup($default_options + ["--jtokenizer", "bigram"])
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "2 letters")
-    assert_equal(0, @bsfilter.count_message(/tokenizer ja body ¸þÆü°ª/), "3 letters")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "2 letters")
+    assert_equal(0, @bsfilter.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "3 letters")
   end
 
   def test_mecab
@@ -336,8 +356,8 @@ class TestJtokenizer < Test::Unit::TestCase
     end
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "2 letters")
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body ¸þÆü°ª/), "3 letters")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "2 letters")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "3 letters")
   end
 
   def test_chasen
@@ -346,8 +366,8 @@ class TestJtokenizer < Test::Unit::TestCase
     end
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "2 letters")
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body ¸þÆü°ª/), "3 letters")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "2 letters")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body å‘æ—¥è‘µ/), "3 letters")
   end
 
   def teardown
@@ -366,13 +386,13 @@ class TestBase64 < Test::Unit::TestCase
   def test_delimiter_bug
     @files = ["testcases/mime_delimiter_bug"]
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "japanese")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "japanese")
   end
 
   def test_base64
     @files = ["testcases/sjis_base64_iso_2022_jp"]
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "japanese")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "japanese")
   end
 end
 
@@ -386,7 +406,7 @@ class TestPlainTextParser < Test::Unit::TestCase
   def test_folding
     @files = ["testcases/folding"]
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/tokenizer ja body Ä«´é/), "japanese")
+    assert_equal(1, @bsfilter.count_message(/tokenizer ja body æœé¡”/), "japanese")
     assert_equal(0, @bsfilter.count_message(/headtail/), "english")
   end
 
@@ -424,6 +444,23 @@ class TestDBM < Test::Unit::TestCase
 
     unlink_token_sdbm
     unlink_prob_sdbm
+  end
+
+  def test_ndbm
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-c"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert(File::readable?("ja.clean.ndbm.db"), "ja.clean.ndbm.db")
+    assert(File::readable?("C.clean.ndbm.db"), "C.clean.ndbm.db")
+
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-u"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+    assert(File::readable?("ja.prob.ndbm.db"), "ja.prob.ndbm.db")
+    assert(File::readable?("C.prob.ndbm.db"), "C.prob.ndbm.db")
+
+    unlink_token_ndbm
+    unlink_prob_ndbm
   end
 
   def test_sdbm
@@ -633,7 +670,7 @@ class TestHeaderParser < Test::Unit::TestCase
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject èŠ±è¦‹/), "^tokenizer subject")
   end
 
   def test_mime_b_iso_2202_jp
@@ -641,7 +678,7 @@ class TestHeaderParser < Test::Unit::TestCase
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject èŠ±è¦‹/), "^tokenizer subject")
   end
 
   def test_mime_b_shift_jis
@@ -649,7 +686,7 @@ class TestHeaderParser < Test::Unit::TestCase
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject èŠ±è¦‹/), "^tokenizer subject")
   end
 
   def test_mime_b_shift_jis_bad
@@ -657,7 +694,7 @@ class TestHeaderParser < Test::Unit::TestCase
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
-    assert_equal(1, @bsfilter.count_message(/^tokenizer subject ²Ö¸«/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject èŠ±è¦‹/), "^tokenizer subject")
   end
 
   def teardown

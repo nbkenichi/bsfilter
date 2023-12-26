@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-## -*-Ruby-*- $Id: bsfilter,v 1.71 2005/07/18 12:46:46 nabeken Exp $
+## -*-Ruby-*- $Id: bsfilter,v 1.73 2005/07/23 11:11:41 nabeken Exp $
 
 ## Copyright (C) 2003, 2004, 2005 NABEYA Kenichi
 ##
@@ -27,9 +27,9 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = "$Name: release_1_0_8 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
+  Release = "$Name: release_1_0_9 $".split[1].sub(/\A[^\d]*/, '').gsub(/_/, '.')
   Release.concat("-") if (Release == "")
-  Revision = "$Revision: 1.71 $".gsub(/[^\.\d]/, '')
+  Revision = "$Revision: 1.73 $".gsub(/[^\.\d]/, '')
   Languages = ["C", "ja"]
   Options = Hash::new           # used like a global variable
   DB = Hash::new
@@ -927,22 +927,23 @@ EOM
       end
 
       case str.gsub(/\s/, '')
-      when reg_euc
-        Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
-        if (gb18030_possible)
-            return ["ja", "gb18030"]
-        else
-            return ["ja", "euc"]
-        end
-      when reg_sjis
-        Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
-        return ["ja", "sjis"]
       when reg_utf8
         Options["message-fh"].printf("lang ja utf8\n") if (Options["debug"])
         return ["ja", "utf8"]
       when reg_jis
         Options["message-fh"].printf("lang ja jis\n") if (Options["debug"])
         return ["ja", "jis"]
+      when reg_sjis
+        Options["message-fh"].printf("lang ja sjis\n") if (Options["debug"])
+        return ["ja", "sjis"]
+      when reg_euc
+        if (gb18030_possible)
+          Options["message-fh"].printf("lang ja gb18030\n") if (Options["debug"])
+          return ["ja", "gb18030"]
+        else
+          Options["message-fh"].printf("lang ja euc\n") if (Options["debug"])
+          return ["ja", "euc"]
+        end
       end
     end
     return [nil, nil]
@@ -1201,7 +1202,7 @@ EOM
     
     sub_head_db = TokenDB::new(lang)
     main_head_db = tokenize_headers(lang, headers) if (Options["use-header"])
-    lang = main_head_db.language
+    lang = main_head_db.language if main_head_db
     
     found_html_part = false
     plain_bodies = Array::new
@@ -1393,7 +1394,6 @@ EOM
     if (! lang)
       lang = lang_backup
     end
-    db.language = lang
 
     str = buf.join
     
@@ -1407,6 +1407,8 @@ EOM
       elsif (code == "gb18030")
         if (Options["utf-8"])
           str = Iconv.gb180302eucjp(str)
+        else
+          lang = "C"
         end
       else
         str = NKF::nkf('-e -X -Z0', str)
@@ -1414,7 +1416,7 @@ EOM
     else
       str = latin2ascii(str)
     end
-    
+
     tags = Array::new
     if (headers["content-type"] =~ /html/i)
       # remove salad at head of part
@@ -1482,6 +1484,7 @@ EOM
       db.add_hash({"url" => url_tag_hash})
     end
     db.file_count = 1
+    db.language = lang    
     return [db, body]
   end
   

@@ -1,94 +1,84 @@
-<?xml version="1.0" encoding="EUC-JP ?>
+<?xml version="1.0" encoding="UTF-8 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
 
 <head>
 <title>bsfilter with mew</title>
-<meta http-equiv="content-type" content="text/html; charset=EUC-JP" />
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta http-equiv="adalign" content="right" />
 <link rel="stylesheet" href="bsfilter.css" type="text/css" />
 </head>
 
 <body>
-<p class="version">$Id: mew.html,v 1.7 2012/06/17 06:57:11 nabeken Exp $</p>
 <h1>bsfilter with mew</h1>
-
-<p class="icon">
-<a href="http://jigsaw.w3.org/css-validator/check/referer">
-<img src="vcss.png" alt="Valid CSS!" height="31" width="88" /></a>
-<a href="http://validator.w3.org/check/referer">
-<img src="valid-xhtml11.png" alt="Valid XHTML 1.1!" height="31" width="88" /></a>
-<a href="http://sourceforge.jp/">
-<img src="http://sourceforge.jp/sflogo.php?group_id=1011" alt="SourceForge.jp" width="96" height="31" /></a>
-</p>
 
 <p><a href="index.html">index</a></p>
 
-<h2>bsfilter��mew version 5�ʹߤ���Ȥ�</h2>
-<p>bsfilter����Ѥ���褦��mew��spam�ط��������Ԥ���</p>
+<h2>bsfilterをmew version 5以降から使う</h2>
+<p>bsfilterを使用するよう、mewのspam関係の設定を行う。</p>
 
-<h3>���󥹥ȡ���</h3>
+<h3>インストール</h3>
 <ul>
-<li>mew�ΥС������˹�碌��mua/mew{5, 6, 6.4}/mew.el��~/.emacs.el�ʤɤ��ɲä��롣</li>
+<li>mewのバージョンに合わせてmua/mew{5, 6, 6.4}/mew.elを~/.emacs.elなどに追加する。</li>
 </ul>
 
-<h3>�Ȥ���</h3>
-<p>mew����å��������������ݡ�����MTA, POP proxy���ˤ��X-Spam-Flag�إå����դ��Ƥ�����ˤϡ�spam�˼�ưŪ��"D"�ޡ������դ���</p>
-<p>summary�⡼�ɤǰʲ������ѤǤ��롣</p>
+<h3>使い方</h3>
+<p>mewがメッセージを取得する際、既にMTA, POP proxy等によりX-Spam-Flagヘッダが付いている場合には、spamに自動的に"D"マークが付く。</p>
+<p>summaryモードで以下が利用できる。</p>
 <dl>
-<dt>lh</dt><dd>learn-ham�����ߤΥ�å�������clean�Ȥ��Ƴؽ����롣</dd>
-<dt>ls</dt><dd>learn-spam�����ߤΥ�å�������spam�Ȥ��Ƴؽ����롣</dd>
-<dt>lm</dt><dd>�꡼�������Υᥤ���ؽ���Ƚ�ꡣspam�ˤ�"*"�ޡ������դ���(mew 6.4�ʹ�)</dd>
-<dt>bm</dt><dd>�꡼�������Υᥤ���ؽ���Ƚ�ꡣspam�ˤ�"*"�ޡ������դ���(mew 6.3����)</dd>
+<dt>lh</dt><dd>learn-ham。現在のメッセージをcleanとして学習する。</dd>
+<dt>ls</dt><dd>learn-spam。現在のメッセージをspamとして学習する。</dd>
+<dt>lm</dt><dd>リージョン内のメイルを学習、判定。spamには"*"マークが付く。(mew 6.4以降)</dd>
+<dt>bm</dt><dd>リージョン内のメイルを学習、判定。spamには"*"マークが付く。(mew 6.3以前)</dd>
 </dl>
 
 
-<h2>bsfilter��mew version 4����Ȥ�</h2>
-<p>bsfilter����Ѥ���褦��mew��spam�ط��������Ԥ���</p>
+<h2>bsfilterをmew version 4から使う</h2>
+<p>bsfilterを使用するよう、mewのspam関係の設定を行う。</p>
 
-<h3>���󥹥ȡ���</h3>
+<h3>インストール</h3>
 <ul>
-<li>mua/mew4/emacs.el��~/.emacs.el���ɲä��롣</li>
-<li>mua/mew4/mew.el��~/.mew.el���ɲä��롣Mew 4.2.53�ξ��ϡ�mew-summary-bsfilter-mark-region�ˤĤ��ơ������ȥ����Ȥ���Ƥ����������Ѥ��롣</li>
+<li>mua/mew4/emacs.elを~/.emacs.elに追加する。</li>
+<li>mua/mew4/mew.elを~/.mew.elに追加する。Mew 4.2.53の場合は、mew-summary-bsfilter-mark-regionについて、コメントアウトされている定義を使用する。</li>
 </ul>
 
-<h3>�Ȥ���</h3>
-<p>mew����å��������������ݡ�����MTA, POP proxy���ˤ��X-Spam-Flag�إå����դ��Ƥ�����ˤϡ�spam�˼�ưŪ��"D"�ޡ������դ���</p>
-<p>summary�⡼�ɤǰʲ������ѤǤ��롣</p>
+<h3>使い方</h3>
+<p>mewがメッセージを取得する際、既にMTA, POP proxy等によりX-Spam-Flagヘッダが付いている場合には、spamに自動的に"D"マークが付く。</p>
+<p>summaryモードで以下が利用できる。</p>
 <dl>
-<dt>lh</dt><dd>learn-ham�����ߤΥ�å�������clean�Ȥ��Ƴؽ����롣</dd>
-<dt>ls</dt><dd>learn-spam�����ߤΥ�å�������spam�Ȥ��Ƴؽ����롣</dd>
-<dt>bm</dt><dd>�꡼�������Υᥤ���ؽ���Ƚ�ꡣspam�ˤ�"*"�ޡ������դ���</dd>
+<dt>lh</dt><dd>learn-ham。現在のメッセージをcleanとして学習する。</dd>
+<dt>ls</dt><dd>learn-spam。現在のメッセージをspamとして学習する。</dd>
+<dt>bm</dt><dd>リージョン内のメイルを学習、判定。spamには"*"マークが付く。</dd>
 </dl>
 
-<h2>bsfilter mew version 3 front-end�Ȥ�</h2>
-<p>mew version 3��summary�⡼�ɤ���bsfilter�θƤӽФ����ǽ�ˤ��롢emacs lisp��shell script��</p>
+<h2>bsfilter mew version 3 front-endとは</h2>
+<p>mew version 3のsummaryモードからbsfilterの呼び出しを可能にする、emacs lispとshell script。</p>
 
-<h3>���󥹥ȡ���</h3>
+<h3>インストール</h3>
 <ul>
-<li>mua/mew3/mew.el��~/.mew.el���ɲä��롣</li>
-<li>mua/mew3/bs_mark��bs_clean��bs_spam��PATH���̤ä��ǥ��쥯�ȥ���֤���</li>
+<li>mua/mew3/mew.elを~/.mew.elに追加する。</li>
+<li>mua/mew3/bs_mark、bs_clean、bs_spamを、PATHの通ったディレクトリに置く。</li>
 </ul>
 
-<h3>�Ȥ���</h3>
-<p>summary�⡼�ɤǰʲ������ѤǤ��롣</p>
+<h3>使い方</h3>
+<p>summaryモードで以下が利用できる。</p>
 <dl>
 <dt>bm</dt>
-<dd>��������Τ���ԤΥᥤ���clean��spam��Ƚ�ꡣȽ���̤˽������ᥤ��Υإå���"X-Spam-Flag: Yes"�ʤɤ��ɲä���"*"�ޡ������դ��롣</dd>
+<dd>カーソルのある行のメイルを、cleanかspamか判定。判定結果に従い、メイルのヘッダに"X-Spam-Flag: Yes"などを追加し、"*"マークを付ける。</dd>
 <dt>bM</dt>
-<dd>bm��Ʊ��������"@"�ޡ������Ĥ��Ƥ������ƤΥᥤ����Ф��ƹԤ���
-��"X-Spam-Flag: Yes"��SPAM�ե�����˰�ư����פȤ����褦�ʿ���ʬ���롼������ꤷ�Ƥ�����bM�θ��C-u M-o����Τ������ᡣ</dd>
+<dd>bmと同じ処理を、"@"マークがついている全てのメイルに対して行う。
+「"X-Spam-Flag: Yes"はSPAMフォルダに移動する」というような振り分けルールを設定しておき、bMの後にC-u M-oするのがお薦め。</dd>
 <dt>bc</dt>
-<dd>��������Τ���ԤΥᥤ����Ф��ơ�--add-clean --sub-spam --update��Ԥ���
--a�Ǥθ�Ƚ��(clean��spam�ȸ�Ƚ��)�˴�Ť��������줿�ǡ����١�����������Τ˻��ѤǤ��롣</dd>
+<dd>カーソルのある行のメイルに対して、--add-clean --sub-spam --updateを行う。
+-aでの誤判定(cleanをspamと誤判定)に基づき更新されたデータベースを修復するのに使用できる。</dd>
 <dt>bC</dt>
-<dd>bc��Ʊ��������"@"�ޡ������Ĥ��Ƥ������ƤΥᥤ��ˤ������ƹԤ���</dd>
+<dd>bcと同じ処理を、"@"マークがついている全てのメイルにたいして行う。</dd>
 <dt>bs</dt>
-<dd>��������Τ���ԤΥᥤ����Ф��ơ�--sub-clean --add-spam --update��Ԥ���
--a�Ǥθ�Ƚ��(spam��clean�ȸ�Ƚ��)�˴�Ť��������줿�ǡ����١�����������Τ˻��ѤǤ��롣</dd>
+<dd>カーソルのある行のメイルに対して、--sub-clean --add-spam --updateを行う。
+-aでの誤判定(spamをcleanと誤判定)に基づき更新されたデータベースを修復するのに使用できる。</dd>
 <dt>bS</dt>
-<dd>bs��Ʊ��������"@"�ޡ������Ĥ��Ƥ������ƤΥᥤ��ˤ������ƹԤ���</dd>
+<dd>bsと同じ処理を、"@"マークがついている全てのメイルにたいして行う。</dd>
 </dl>
 
 <p><a href="index.html">index</a></p>

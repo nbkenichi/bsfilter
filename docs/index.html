@@ -1,130 +1,122 @@
-<?xml version="1.0" encoding="EUC-JP" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
 
 <head>
-<meta http-equiv="content-type" content="text/html; charset=EUC-JP" />
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 <meta http-equiv="adalign" content="right" />
 <link rel="stylesheet" href="bsfilter.css" type="text/css" />
-<title>bsfilter / bayesian spam filter / �٥������� ���ѥ� �ե��륿</title>
+<title>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</title>
 </head>
 
 <body>
 <p class="version">$Id: index.html,v 1.41 2013/11/03 08:40:41 nabeken Exp $</p>
-<h1>bsfilter / bayesian spam filter / �٥������� ���ѥ� �ե��륿</h1>
+<h1>bsfilter / bayesian spam filter / ベイジアン スパム フィルタ</h1>
 
 <p class="icon">
 <a href="index.html">japanses</a>
 <a href="index-e.html">english</a>
 </p>
 
-<p class="icon">
-<a href="http://jigsaw.w3.org/css-validator/check/referer">
-<img src="vcss.png" alt="Valid CSS!" height="31" width="88" /></a>
-<a href="http://validator.w3.org/check/referer">
-<img src="valid-xhtml11.png" alt="Valid XHTML 1.1!" height="31" width="88" /></a>
-<a href="http://sourceforge.jp/">
-<img src="http://sourceforge.jp/sflogo.php?group_id=1011" alt="SourceForge.jp" width="96" height="31" /></a>
-</p>
-
-<h2>0. bsfilter�Ȥ�</h2>
+<h2>0. bsfilterとは</h2>
 <ul>
-<li>spam�ȡ������ǤϤʤ������ʥ᡼��(���Υڡ����Ǥ�clean�ȸƤ�)��ưȽ�ꤹ��ե��륿</li>
-<li>���ܸ���б����Ƥ���</li>
-<li>ruby�ǽ񤫤�Ƥ���</li>
-<li>3����λ�����ˡ������<ul>
-	  <li><code>~/.procmailrc</code>������ƤӽФ����ե�����(==�᡼��)��ؽ���Ƚ�ꤹ��</li>
-	  <li>IMAP�ˤ�ꡢ��������Υ᡼���ؽ���Ƚ�ꤹ�롣<strong>IMAP over SSL�⥵�ݡ���</strong></li>
-	  <li>POP proxy�Ȥ���ư���MUA����������ݤ�Ƚ�ꤹ�롣<strong>POP over SSL�⥵�ݡ���</strong></li>
+<li>spamと、そうではない正当なメール(このページではcleanと呼ぶ)を自動判定するフィルタ</li>
+<li>日本語に対応している</li>
+<li>rubyで書かれている</li>
+<li>3種類の使用方法がある<ul>
+	  <li><code>~/.procmailrc</code>等から呼び出し、ファイル(==メール)を学習、判定する</li>
+	  <li>IMAPにより、サーバ内のメールを学習、判定する。<strong>IMAP over SSLもサポート</strong></li>
+	  <li>POP proxyとして動作し、MUAが受信する際に判定する。<strong>POP over SSLもサポート</strong></li>
 </ul></li>
-<li>ư���<a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">���ѥ�ؤ��к� ---A Plan for Spam</a>��
-<a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">�٥�������ե��륿�β��� --- Better Bayesian Filtering</a>��
+<li>動作は<a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">スパムへの対策 ---A Plan for Spam</a>、
+<a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">ベイジアンフィルタの改善 --- Better Bayesian Filtering</a>、
 <a href="http://radio.weblogs.com/0101454/stories/2002/09/16/spamDetection.html">Spam Detection</a>
-����ܤȤ��Ƥ���</li>
-<li>GPL�Τ�ȡ����ۤ���Ƥ���</li>
+を基本としている</li>
+<li>GPLのもと、配布されている</li>
 </ul>
 
-<h2><a id="toc">1. �ܼ�</a></h2>
+<h2><a id="toc">1. 目次</a></h2>
 <ul>
-<li><a href="#toc">1. �ܼ�</a></li>
-<li><a href="#download">2. �����������</a></li>
-<li><a href="#concept">3. ���ä��ꡢ�ɤ��ʤäƤ����?</a></li>
-<li><a href="#started">4. ��äƤߤ褦</a></li>
-<li><a href="#help">5. �إ��</a></li>
-<li><a href="#usage">6. �Ȥ���</a></li>
-<li><a href="#imap">7. �Ȥ���(IMAP��)</a></li>
-<li><a href="#pop">8. �Ȥ���(POP proxy��)</a></li>
+<li><a href="#toc">1. 目次</a></li>
+<li><a href="#download">2. ダウンロード</a></li>
+<li><a href="#concept">3. ざっくり、どうなっているの?</a></li>
+<li><a href="#started">4. やってみよう</a></li>
+<li><a href="#help">5. ヘルプ</a></li>
+<li><a href="#usage">6. 使い方</a></li>
+<li><a href="#imap">7. 使い方(IMAP編)</a></li>
+<li><a href="#pop">8. 使い方(POP proxy編)</a></li>
 <li><a href="#faq">9. FAQ</a></li>
-<li><a href="#bug">10. �Х�</a></li>
-<li><a href="#update">11. ��������</a></li>
-<li><a href="#link">12. ���� / ���</a></li>
+<li><a href="#bug">10. バグ</a></li>
+<li><a href="#update">11. 更新履歴</a></li>
+<li><a href="#link">12. 情報源 / リンク</a></li>
 </ul>
 
-<h2><a id="download">2. �����������/���󥹥ȡ���</a></h2>
+<h2><a id="download">2. ダウンロード/インストール</a></h2>
 <ul>
 <li><a href="http://sourceforge.jp/projects/bsfilter/files/"><strong>bsfilter-1.0.16.tgz</strong></a></li>
-<li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVS��������</strong></a></li>
+<li><a href="http://sourceforge.jp/cvs/?group_id=1011"><strong>CVSアクセス</strong></a></li>
 </ul>
-<h3>2.1. UNIX�Ϥξ��</h3>
-<p>ruby���󥿡��ץ꥿�򥤥󥹥ȡ��뤷�����������֤����bsfilter/bsfilter��PATH���̤äƤ���Ŭ���ʥǥ��쥯�ȥ���֤���
-OS���ǥ����ȥ�ӥ塼�����ˤ�äƤϡ�ports��ebuild���Υѥå��������Ѱդ���Ƥ�����⤢�롣</p>
+<h3>2.1. UNIX系の場合</h3>
+<p>rubyインタープリタをインストールし、アーカイブの中のbsfilter/bsfilterをPATHが通っている適当なディレクトリに置く。
+OS、ディストリビューションによっては、ports、ebuild等のパッケージが用意されている場合もある。</p>
 
-<h2><a id="concept">3. ���ä��ꡢ�ɤ��ʤäƤ����?</a></h2>
-<h3>3.1. ñ��(token)��spam��Ψ����Ƚ�ꤹ��</h3>
-<p>���餫����token���Ȥ�spam��Ψ����Ƥ������᡼������spam��Ψ�ι⤤token��¿���ޤޤ�Ƥ����顢
-���Υ᡼�뤬spam�Ǥ����Ƚ�ꤹ�롣
+<h2><a id="concept">3. ざっくり、どうなっているの?</a></h2>
+<h3>3.1. 単語(token)のspam確率から判定する</h3>
+<p>あらかじめtokenごとのspam確率を求めておき、メールの中にspam確率の高いtokenが多く含まれていたら、
+そのメールがspamであると判定する。
 </p>
-<p class="fig"><img src="judge.png" alt="spam��Ψ����Ƚ��" /></p>
+<p class="fig"><img src="judge.png" alt="spam確率から判定" /></p>
 
-<h3>3.2. ������ɬ��</h3>
-<p>�ºݤ˻��Ѥ򳫻Ϥ������ˡ�spam��Ψ�����Ȥ���������ɬ�פǤ��롣
-Ƚ��ѤΥ᡼�����token�и�������ᡢspam / (clean + spam)�ˤ���Ψ����롣
---add-clean, --add-spam, --update�Ȥ������ޥ�ɤǽ�����Ԥ���
+<h3>3.2. 準備が必要</h3>
+<p>実際に使用を開始する前に、spam確率を求めるという準備が必要である。
+判定済のメール内のtoken出現回数を求め、spam / (clean + spam)により確率を求める。
+--add-clean, --add-spam, --updateというコマンドで準備を行う。
 </p>
-<p class="fig"><img src="prepare.png" alt="������ɬ��" /></p>
+<p class="fig"><img src="prepare.png" alt="準備が必要" /></p>
 
-<h2><a id="started">4. ��äƤߤ褦</a></h2>
-<h3>����</h3>
-<p>�ºݤ�Ƚ�ꤹ�����ˡ��ǡ����١������������ɬ�פ����롣</p>
-<p>1. clean�ʥ᡼�����ñ�������롣</p>
+<h2><a id="started">4. やってみよう</a></h2>
+<h3>準備</h3>
+<p>実際に判定する前に、データベースを準備する必要がある。</p>
+<p>1. cleanなメール中の単語を数える。</p>
 <pre>
 % bsfilter --add-clean ~/Mail/inbox/*
 </pre>
-<p>2. spam���ñ�������롣</p>
+<p>2. spam中の単語を数える。</p>
 <pre>
 % bsfilter --add-spam ~/Mail/spam/*
 </pre>
-<p>3. ñ�줴�Ȥ�clean/spam�ʳ�Ψ����롣</p>
+<p>3. 単語ごとにclean/spamな確率を求める。</p>
 <pre>
 % bsfilter --update
 </pre>
-<p>�ʾ�ǡ�������λ��</p>
+<p>以上で、準備終了。</p>
 
-<h3>Ƚ��</h3>
-<p>���ޥ�ɥ饤�������Ƚ���оݤΥ᡼�����ꤹ���㡣0����1���ϰϤǡ�spam��Ψ��ɽ������롣</p>
+<h3>判定</h3>
+<p>コマンドライン引数で判定対象のメールを指定する例。0から1の範囲で、spam確率が表示される。</p>
 <pre>
 % bsfilter ~/Mail/inbox/1
 combined probability /home/nabeken/Mail/inbox/1 1 0.012701
 </pre>
 
-<p>ɸ�����Ϥ���Ƚ���оݤΥ᡼������Ϥ����㡣spam�ξ�硢exit status��0�ˤʤ롣</p>
+<p>標準入力から判定対象のメールを入力する例。spamの場合、exit statusが0になる。</p>
 <pre>
 ~% bsfilter &lt; ~/Mail/inbox/1 ; echo $status
 1
 ~% bsfilter &lt; ~/Mail/spam/1 ; echo $status
 0
 </pre>
-<p><code>~/.procmailrc</code>����Ƥ֤Ȥ��Υ���ץ�쥷�Ԥ���1��
-exit status�����Ѥ��ơ�spam��spam�ե�����˰�ư���롣</p>
+<p><code>~/.procmailrc</code>から呼ぶときのサンプルレシピその1。
+exit statusを利用して、spamをspamフォルダに移動する。</p>
 <pre>
 :0 HB:
 * ? bsfilter -a
 spam/.
 </pre>
-<p><code>~/.procmailrc</code>����Ƥ֤Ȥ��Υ���ץ�쥷�Ԥ���2��spam��
-<code>X-Spam-Flag:</code>��<code>X-Spam-Probability:</code>�إå����ɲä���
-X-Spam-Probability�μ�����Ψ�˽�����black�ե������gray�ե�����˰�ư���롣</p>
+<p><code>~/.procmailrc</code>から呼ぶときのサンプルレシピその2。spamに
+<code>X-Spam-Flag:</code>、<code>X-Spam-Probability:</code>ヘッダを追加し、
+X-Spam-Probabilityの示す確率に従い、blackフォルダ、grayフォルダに移動する。</p>
 <pre>
 :0 fw
 | /home/nabeken/bin/bsfilter --pipe --insert-flag --insert-probability
@@ -138,84 +130,84 @@ black/.
 gray/.
 </pre>
 
-<h2><a id="help">5. �إ��</a></h2>
-<p><a href="http://sourceforge.jp/forum/?group_id=1011">bsfilter�ե������</a>�ؤɤ�����</p>
+<h2><a id="help">5. ヘルプ</a></h2>
+<p><a href="http://sourceforge.jp/forum/?group_id=1011">bsfilterフォーラム</a>へどうぞ。</p>
 
-<h2><a id="usage">6. �Ȥ���</a></h2>
-<h3>���ޥ�ɥ饤��η���</h3>
-<p>�ʲ���2�̤�η��������롣</p>
+<h2><a id="usage">6. 使い方</a></h2>
+<h3>コマンドラインの形式</h3>
+<p>以下の2通りの形式がある。</p>
 <ol>
 <li>bsfilter [options] [commands] &lt; MAIL</li>
 <li>bsfilter [options] [commands] MAIL ...</li>
 </ol>
-<p>maintenance mode��filtering mode�����롣</p>
+<p>maintenance modeとfiltering modeがある。</p>
 <ul>
-<li>commands�����ꤵ��Ƥ���Ȥ��ϡ�maintenance mode��ư����ǡ����١����ι�����Ԥʤ�����spam��Ƚ��ϹԤ�ʤ���</li>
-<li>commands�����ꤵ��Ƥ��ʤ��Ȥ��ϡ�filtering mode��ư���spam��Ƚ���Ԥʤ������ǡ����١����ι����ϹԤ�ʤ���</li>
-<li>filtering mode��--(synchronous-)auto-update�����ꤵ��Ƥ���Ȥ����㳰�ǡ�spam��Ƚ�ꡢ�ǡ����١����ι�����ξ����Ԥ���</li>
+<li>commandsが指定されているときは、maintenance modeで動作し、データベースの更新を行なうが、spamの判定は行わない。</li>
+<li>commandsが指定されていないときは、filtering modeで動作し、spamの判定を行なうが、データベースの更新は行わない。</li>
+<li>filtering modeで--(synchronous-)auto-updateが指定されているときは例外で、spamの判定、データベースの更新、両方を行う。</li>
 </ul>
 <p>
-ɸ�����Ϥ���᡼���Ϳ����spam���ɤ���Ƚ�ꤵ����ˤϡ�filtering mode��1�η�������Ѥ��롣
-spam�ξ��ϡ�exit status��0�ˤʤ롣
-<code>~/.procmailrc</code>����ƤӽФ����ϡ��̾���η����ˤʤ롣
+標準入力からメールを与え、spamかどうか判定させるには、filtering modeで1の形式を使用する。
+spamの場合は、exit statusが0になる。
+<code>~/.procmailrc</code>から呼び出す場合は、通常、この形式になる。
 </p>
 <p>
-���ޥ�ɥ饤������ǥ᡼��Υե�����͡����Ϳ����spam���ɤ���Ƚ�ꤵ����ݤˤϡ�filtering mode��2�η�������Ѥ��롣
-ʣ���Υ᡼���Ʊ����Ƚ�ꤹ�뤳�Ȥ�����롣��̤�ɸ����Ϥ�ɽ������롣
+コマンドライン引数でメールのファイルネームを与え、spamかどうか判定させる際には、filtering modeで2の形式を使用する。
+複数のメールを同時に判定することが出来る。結果は標準出力に表示される。
 </p>
 
-<h3>���ޥ�ɰ���</h3>
+<h3>コマンド一覧</h3>
 <dl>
 <dt>--add-clean</dt>
 <dt>-c</dt>
-<dd>clean�ʥ᡼�����token��ǡ����١�����­����</dd>
+<dd>cleanなメール中のtokenをデータベースに足す。</dd>
 
 <dt>--add-spam</dt>
 <dt>-s</dt>
-<dd>spam���token��ǡ����١�����­����</dd>
+<dd>spam中のtokenをデータベースに足す。</dd>
 
 <dt>--sub-clean</dt>
 <dt>-C</dt>
-<dd>clean�ʥ᡼�����token��ǡ����١������������</dd>
+<dd>cleanなメール中のtokenをデータベースから引く。</dd>
 
 <dt>--sub-spam</dt>
 <dt>-S</dt>
-<dd>spam���token��ǡ����١������������</dd>
+<dd>spam中のtokenをデータベースから引く。</dd>
 
 <dt>--update</dt>
 <dt>-u</dt>
-<dd>token���Ȥ�clean/spam��Ψ�����äƤ���ǡ����١����򹹿����롣-c��-s����Ʊ���˻Ȥ�줿���ϡ��᡼�����token�ˤĤ��ƤΤߡ���Ψ�ǡ����١����򹹿����롣</dd>
+<dd>tokenごとのclean/spam確率が入っているデータベースを更新する。-c、-s等と同時に使われた場合は、メール中のtokenについてのみ、確率データベースを更新する。</dd>
 
 <dt>--export-clean</dt>
-<dd>clean��token��ǡ����١��������ȼ��ե����ޥåȤΥƥ����Ȥ˥������ݡ��Ȥ��롣</dd>
+<dd>cleanなtokenをデータベースから独自フォーマットのテキストにエクスポートする。</dd>
 
 <dt>--export-spam</dt>
-<dd>spam��token��ǡ����١��������ȼ��ե����ޥåȤΥƥ����Ȥ˥������ݡ��Ȥ��롣</dd>
+<dd>spamなtokenをデータベースから独自フォーマットのテキストにエクスポートする。</dd>
 
 <dt>--import-clean</dt>
-<dd>clean��token��ǡ����١������ȼ��ե����ޥåȤΥƥ����Ȥ��饤��ݡ��Ȥ��롣</dd>
+<dd>cleanなtokenをデータベースへ独自フォーマットのテキストからインポートする。</dd>
 
 <dt>--import-spam</dt>
-<dd>spam��token��ǡ����١������ȼ��ե����ޥåȤΥƥ����Ȥ��饤��ݡ��Ȥ��롣</dd>
+<dd>spamなtokenをデータベースへ独自フォーマットのテキストからインポートする。</dd>
 
 <dt>--export-probability</dt>
-<dd>��Ψ�ǡ����١����򥨥����ݡ��Ȥ��롣�ǥХå��Ѥε�ǽ�Ǥ��ꡢ����ݡ��ȤϽ���ʤ���</dd>
+<dd>確率データベースをエクスポートする。デバッグ用の機能であり、インポートは出来ない。</dd>
 
 </dl>
-<p>ʣ���Υ��ޥ�ɤ�Ʊ���˻���Ǥ��롣</p>
+<p>複数のコマンドを同時に指定できる。</p>
 
-<h3>���ץ�������</h3>
+<h3>オプション一覧</h3>
 <dl>
 <dt>--homedir directory</dt>
-<dd>�ǡ����١��������å��ե��������ۡ���ǥ��쥯�ȥ����ꤹ�롣
---homedir���ץ���󤬻��Ѥ���ʤ��ä����ϡ�
-BSFILTERHOME�Ķ��ѿ������ꤵ�줿�ǥ��쥯�ȥ����Ѥ��롣
-BSFILTERHOME�Ķ��ѿ������ꤵ��Ƥ��ʤ����ϡ�<code>~/.bsfilter</code>����Ѥ��롣
-HOME�Ķ��ѿ������ꤵ��Ƥ��ʤ����ϡ�bsfilter�Τ���ǥ��쥯�ȥ����Ѥ��롣</dd>
+<dd>データベース、ロックファイルを作るホームディレクトリを指定する。
+--homedirオプションが使用されなかった場合は、
+BSFILTERHOME環境変数で設定されたディレクトリを使用する。
+BSFILTERHOME環境変数が設定されていない場合は、<code>~/.bsfilter</code>を使用する。
+HOME環境変数が設定されていない場合は、bsfilterのあるディレクトリを使用する。</dd>
 
 <dt>--config-file filename</dt>
-<dd>����ե��������ꤹ�롣�ǥե���ȤǤϡ��嵭bsfilter�ۡ���ǥ��쥯�ȥ��
-bsfilter.conf�����Ѥ���롣
+<dd>設定ファイルを指定する。デフォルトでは、上記bsfilterホームディレクトリの
+bsfilter.confが使用される。
 <pre>
 ## example of bsfilter.conf
 jtokenizer MeCab
@@ -224,286 +216,286 @@ spam-cutoff 0.6
 </dd>
 
 <dt>--max-line number</dt>
-<dd>��Ƭ������ꤷ���Կ����ϰϤ�Ƚ�ꡢ�ؽ����оݤˤ��롣</dd>
+<dd>先頭から指定した行数の範囲を、判定、学習の対象にする。</dd>
 
 <dt>--db sdbm|gdbm|bdb1|bdb|qdbm</dt>
-<dd>�ǡ����١����η�������ꤹ�롣�ǥե���Ȥ�sdbm��<strong>bdb, qdbm�Υ��ݡ��Ȥ�1.0.8���顣</strong></dd>
+<dd>データベースの形式を指定する。デフォルトはsdbm。<strong>bdb, qdbmのサポートは1.0.8から。</strong></dd>
 
 <dt>--jtokenizer bigram|block|mecab|chasen|kakasi</dt>
 <dt>-j bigram|block|mecab|chasen|kakasi</dt>
-<dd>���ܸ�Υ᡼�뤫��token���ڤ�Ф��ݤΥ��르�ꥺ�����ꤹ�롣
-bigram(Ϣ³�������2ʸ����1token)��
-block(Ϣ³�������������1token)��
-<a href="http://cl.aist-nara.ac.jp/~taku-ku/software/mecab/">MeCab(������)</a>��
-<a href="http://chasen.aist-nara.ac.jp/">ChaSen</a>��
-<a href="http://kakasi.namazu.org/">KAKASI</a>��ƤӽФ���ˡ�򥵥ݡ��Ȥ��Ƥ��롣
-�ǥե���Ȥ�bigram��MeCab, ChaSen, KAKASI����Ѥ���ˤϡ�
-���餫����ruby�Х���ǥ��󥰤򥤥󥹥ȡ��뤷�Ƥ���ɬ�פ����롣</dd>
+<dd>日本語のメールからtokenを切り出す際のアルゴリズムを指定する。
+bigram(連続する漢字2文字で1token)、
+block(連続する漢字全部で1token)、
+<a href="http://cl.aist-nara.ac.jp/~taku-ku/software/mecab/">MeCab(和布蕪)</a>、
+<a href="http://chasen.aist-nara.ac.jp/">ChaSen</a>、
+<a href="http://kakasi.namazu.org/">KAKASI</a>を呼び出す方法をサポートしている。
+デフォルトはbigram。MeCab, ChaSen, KAKASIを使用するには、
+あらかじめrubyバインディングをインストールしておく必要がある。</dd>
 
 <dt>--method g|r|rf</dt>
 <dt>-m g|r|rf</dt>
-<dd>Paul Graham��Ƥ������˽ڤ��뤫(g)��
-Gary Robinson��Ƥ������˽ڤ��뤫(r)��
-Gary Robinson-Fisher�����˽ڤ��뤫(rf)����ꤹ�롣
-�ǥե���Ȥ�Gary Robinson-Fisher������</dd>
+<dd>Paul Graham提案の方式に准ずるか(g)、
+Gary Robinson提案の方式に准ずるか(r)、
+Gary Robinson-Fisher方式に准ずるか(rf)を指定する。
+デフォルトはGary Robinson-Fisher方式。</dd>
 
 <dt>--spam-cutoff number</dt>
-<dd>spam�γ�Ψ�������İʾ���ä��顢spam��Ƚ�ꤹ�뤫����ꤹ�롣
-�ǥե���Ȥϡ�Paul Graham������0.9��Gary Robinson������0.582��Robinson-Fisher������0.95��</dd>
+<dd>spamの確率がいくつ以上だったら、spamと判定するかを指定する。
+デフォルトは、Paul Graham方式で0.9、Gary Robinson方式で0.582、Robinson-Fisher方式で0.95。</dd>
 
 <dt>--auto-update</dt>
 <dt>-a</dt>
-<dd>�᡼�뤬clean��spam��Ƚ�ꤷ�����η�̤˴�Ť��ƥ᡼�����token��ǡ����١�����­����
-��Ψ�ǡ����١����⹹�����롣</dd>
+<dd>メールがcleanかspamか判定し、その結果に基づいてメール中のtokenをデータベースに足し、
+確率データベースも更新する。</dd>
 
 <dt>--disable-degeneration</dt>
 <dt>-D</dt>
-<dd>��Ψ�ǡ����١���������ݤδԸ����޻ߤ��롣</dd>
+<dd>確率データベースを引く際の還元を抑止する。</dd>
 
 <dt>--disable-utf-8</dt>
-<dd>utf-8���ݡ��Ȥ��޻ߤ��롣</dd>
+<dd>utf-8サポートを抑止する。</dd>
 
 <dt>--refer-header header[,header...]</dt>
-<dd>���Ȥ���إå�����ꤹ�롣ʣ�����ꤹ����ϡ����ڡ��������줺�˥���ޤǶ��ڤ����󤹤롣�ǥե���Ȥ�
+<dd>参照するヘッダを指定する。複数指定する場合は、スペースを入れずにコンマで区切り羅列する。デフォルトは
 "Ufrom,From,To,Cc,Subject,Reply-to,Return-path,Received,Content-Transfer-Encoding,Content-Type,charset,Content-Disposition"
-����ꤷ���Τ�Ʊ����</dd>
+を指定したのと同じ。</dd>
 
 <dt>--ignore-header</dt>
 <dt>-H</dt>
-<dd>�᡼��إå���̵�뤹�롣--refer-header ""����ꤷ���Τ�Ʊ����</dd>
+<dd>メールヘッダを無視する。--refer-header ""を指定したのと同じ。</dd>
 
 <dt>--ignore-body</dt>
 <dt>-B</dt>
-<dd>URL���᡼�륢�ɥ쥹�ʳ��Υ᡼����ʸ��̵�뤹�롣</dd>
+<dd>URL、メールアドレス以外のメール本文を無視する。</dd>
 
 <dt>--ignore-plain-text-part</dt>
-<dd>html�Υѡ��Ȥ������硢plain text�Υѡ��Ȥ�̵�뤹�롣</dd>
+<dd>htmlのパートがある場合、plain textのパートを無視する。</dd>
 
 <dt>--ignore-after-last-atag</dt>
-<dd>�Ǹ��A end tag�ʹߤ�̵�뤹�롣</dd>
+<dd>最後のA end tag以降を無視する。</dd>
 
 <dt>--mark-in-token "characters"</dt>
-<dd>token��˸���Ƥ�褤(== token�ζ��ڤ�ˤʤ�ʤ�)�������ꤹ�롣
-�ǥե���ȤǤϡ�"*'!"�����ꤵ��Ƥ��롣</dd>
+<dd>token中に現れてもよい(== tokenの区切りにならない)記号を指定する。
+デフォルトでは、"*'!"が設定されている。</dd>
 
 <dt>--show-new-token</dt>
-<dd>�����˥ǡ����١������ɲä��줿token��ɽ�����롣</dd>
+<dd>新たにデータベースに追加されたtokenを表示する。</dd>
 
 <dt>--show-process</dt>
-<dd>ư����ͻҤ�ɽ�����롣
-���Υ���फ�顢�ץ��ȥ��롢���졢Ƚ���̡��ؽ����ޥ�ɡ�������message-id���̣���롣</dd>
+<dd>動作の様子を表示する。
+左のカラムから、プロトコル、言語、判定結果、学習コマンド、日時、message-idを意味する。</dd>
 
 <dt>--show-db-status</dt>
-<dd>�ǡ����١����ξ�����ɽ�����ƽ�λ���롣
-���Υ���फ��"db"(����)�����졢clean token�ο���clean mail�ο���spam token�ο���spam mail�ο�����Ψ�ǡ����١������token�����̣���롣</dd>
+<dd>データベースの状況を表示して終了する。
+左のカラムから"db"(固定)、言語、clean tokenの数、clean mailの数、spam tokenの数、spam mailの数、確率データベース内のtoken数を意味する。</dd>
 
 <dt>--mbox</dt>
-<dd>mbox�����򥵥ݡ��ȡ��ҤȤĤΥե������"unix from"�Ƕ��ڤ�줿ʣ���Υ᡼��Ȥ��ư�����</dd>
+<dd>mbox形式をサポート。ひとつのファイルを、"unix from"で区切られた複数のメールとして扱う。</dd>
 
 <dt>--max-mail number</dt>
-<dd>token database��Υ᡼��ο��������ͤ�ۤ����顢token database��̾����롣�ǥե���Ȥ�10000��</dd>
+<dd>token database中のメールの数がこの値を越えたら、token databaseを縮小する。デフォルトは10000。</dd>
 
 <dt>--min-mail number</dt>
-<dd>token database���token�о����ˡ�(min-mail�ǻ��ꤷ����/max-mail�ǻ��ꤷ����)��ݤ��뤳�Ȥˤ�ꡢtoken database�ν̾���Ԥ���
-�ǥե���Ȥ�8000��</dd>
+<dd>token database中のtoken登場回数に、(min-mailで指定した数/max-mailで指定した数)を掛けることにより、token databaseの縮小を行う。
+デフォルトは8000。</dd>
 
 <dt>--pipe</dt>
-<dd>�᡼���stdout�˽��Ϥ��롣</dd>
+<dd>メールをstdoutに出力する。</dd>
 
 <dt>--insert-flag</dt>
-<dd>stdout�˽��Ϥ���᡼��Υإå���"X-Spam-Flag: Yes"��"X-Spam-Flag: No"���ɲä��롣
-filtering mode�κݤˤ�Ƚ���̤˴�Ť���maintenance mode�κݤˤϥ��ޥ�ɤ˴�Ť����ɲä��롣</dd>
+<dd>stdoutに出力するメールのヘッダに"X-Spam-Flag: Yes"か"X-Spam-Flag: No"を追加する。
+filtering modeの際には判定結果に基づき、maintenance modeの際にはコマンドに基づき、追加する。</dd>
 
 <dt>--insert-probability</dt>
-<dd>stdout�˽��Ϥ���᡼��Υإå��ˡ�"X-Spam-Probability: number"���ɲä��롣filtering mode�ǤΤ�ͭ����</dd>
+<dd>stdoutに出力するメールのヘッダに、"X-Spam-Probability: number"を追加する。filtering modeでのみ有効。</dd>
 
 <dt>--insert-revision</dt>
-<dd>stdout�˽��Ϥ���᡼��Υإå��ˡ�"X-Spam-Revision: bsfilter..."���ɲä��롣filtering mode�ǤΤ�ͭ����</dd>
+<dd>stdoutに出力するメールのヘッダに、"X-Spam-Revision: bsfilter..."を追加する。filtering modeでのみ有効。</dd>
 
 <dt>--header-prefix string</dt>
-<dd>�᡼��Υإå��ˡ�"X-Spam-..."�ǤϤʤ���"X-���ꤷ��ʸ����-..."���ɲä��롣</dd>
+<dd>メールのヘッダに、"X-Spam-..."ではなく、"X-指定した文字列-..."を追加する。</dd>
 
 <dt>--mark-spam-subject</dt>
-<dd>spam�ξ�硢�᡼���Subject�إå���"[SPAM] "���������롣</dd>
+<dd>spamの場合、メールのSubjectヘッダに"[SPAM] "を挿入する。</dd>
 
 <dt>--spam-subject-prefix string</dt>
-<dd>�᡼���Subject�إå���"[SPAM] "�ǤϤʤ������ꤷ��ʸ������������롣</dd>
+<dd>メールのSubjectヘッダに"[SPAM] "ではなく、指定した文字列を挿入する。</dd>
 
 <dt>--list-clean</dt>
-<dd>clean��Ƚ�ꤵ�줿�ե�����͡����ɽ�����롣Ƚ���оݤΥ᡼��򥳥ޥ�ɥ饤�������Ϳ�������Τ�ͭ����</dd>
+<dd>cleanと判定されたファイルネームを表示する。判定対象のメールをコマンドライン引数で与えた場合のみ有効。</dd>
 
 <dt>--list-spam</dt>
-<dd>spam��Ƚ�ꤵ�줿�ե�����͡����ɽ�����롣Ƚ���оݤΥ᡼��򥳥ޥ�ɥ饤�������Ϳ�������Τ�ͭ����</dd>
+<dd>spamと判定されたファイルネームを表示する。判定対象のメールをコマンドライン引数で与えた場合のみ有効。</dd>
 
 <dt>--help</dt>
 <dt>-h</dt>
-<dd>�إ�פ�ɽ�����롣</dd>
+<dd>ヘルプを表示する。</dd>
 
 <dt>--revision</dt>
-<dd>��ӥ�����ɽ�����롣</dd>
+<dd>リビジョンを表示する。</dd>
 
 <dt>--verbose</dt>
 <dt>-v</dt>
-<dd>��å�������¿���ɽ�����롣</dd>
+<dd>メッセージを多めに表示する。</dd>
 
 <dt>--debug</dt>
 <dt>-d</dt>
-<dd>�ǥХå��ѤΥ�å�������ɽ�����롣</dd>
+<dd>デバッグ用のメッセージを表示する。</dd>
 </dl>
 
-<h2><a id="imap">7. �Ȥ���(IMAP��)</a></h2>
-<p>IMAP�ǥ����Ф��̿����������Ф���¸���Ƥ���᡼���ؽ���Ƚ�ꤹ�뤳�Ȥ��Ǥ��롣
-Ƚ���̤˽������إå����������뤳�ȡ����ꤷ���ե�����˥᡼����ư���뤹�뤳�Ȥ���ǽ�Ǥ��롣
+<h2><a id="imap">7. 使い方(IMAP編)</a></h2>
+<p>IMAPでサーバと通信し、サーバに保存しているメールを学習、判定することができる。
+判定結果に従い、ヘッダを挿入すること、指定したフォルダにメールを移動するすることが可能である。
 </p>
-<p class="fig"><img src="imap.png" alt="IAMP�����Ф��̿�" /></p>
+<p class="fig"><img src="imap.png" alt="IAMPサーバと通信" /></p>
 
-<h3>IMAP�˴ؤ��륪�ץ����</h3>
+<h3>IMAPに関するオプション</h3>
 <dl>
 <dt>--imap</dt>
-<dd>IMAP����Ѥ�����˻��ꤹ�롣ɬ�ܡ�</dd>
+<dd>IMAPを使用する場合に指定する。必須。</dd>
 
 <dt>--imap-server hostname</dt>
-<dd>IMAP�����Ф���ꤹ�롣ɬ�ܡ�</dd>
+<dd>IMAPサーバを指定する。必須。</dd>
 
 <dt>--imap-port number</dt>
-<dd>IMAP�����Ф����Ѥ��Ƥ���ݡ����ֹ����ꤹ�롣�ǥե���Ȥ�143��</dd>
+<dd>IMAPサーバが使用しているポート番号を指定する。デフォルトは143。</dd>
 
 <dt>--imap-auth cram-md5|login|loginc|auto</dt>
-<dd>ǧ����ˡ����ꤹ�롣
-cram-md5(AUTHENTICATE CRAM-MD5̿��)��
-login(AUTHENTICATE LOGIN̿��)��
-loginc(LOGIN̿��)��
-auto(cram-md5��login��loginc�ν��Ŭ������ˡ������)�������ǽ���ǥե���Ȥ�auto��</dd>
+<dd>認証方法を指定する。
+cram-md5(AUTHENTICATE CRAM-MD5命令)、
+login(AUTHENTICATE LOGIN命令)、
+loginc(LOGIN命令)、
+auto(cram-md5、login、logincの順で適当な方法を選択)が指定可能。デフォルトはauto。</dd>
 
 <dt>--imap-user user_name</dt>
-<dd>IMAP�����ФǤΥ桼���͡������ꤹ�롣ɬ�ܡ�</dd>
+<dd>IMAPサーバでのユーザネームを指定する。必須。</dd>
 
 <dt>--imap-password password</dt>
-<dd>IMAP�����Ф�password����ꤹ�롣ɬ�ܡ�</dd>
+<dd>IMAPサーバのpasswordを指定する。必須。</dd>
 
 <dt>--imap-folder-clean folder_name</dt>
-<dd>clean�Ȥ��Ƴؽ������᡼�롢clean�Ȥ���Ƚ�ꤵ�줿�᡼����ư������Υե��������ꤹ�롣</dd>
+<dd>cleanとして学習したメール、cleanとして判定されたメールを移動する先のフォルダを指定する。</dd>
 
 <dt>--imap-folder-spam folder_name</dt>
-<dd>spam�Ȥ��Ƴؽ������᡼�롢spam�Ȥ���Ƚ�ꤵ�줿�᡼����ư������Υե��������ꤹ�롣</dd>
+<dd>spamとして学習したメール、spamとして判定されたメールを移動する先のフォルダを指定する。</dd>
 
 <dt>--imap-fetch-unseen</dt>
-<dd>SEEN�ե饰���դ��Ƥ��ʤ��᡼��Τߤ�ؽ���Ƚ����оݤȤ���Ȥ����Ѥ��롣</dd>
+<dd>SEENフラグが付いていないメールのみを学習、判定の対象とするとき使用する。</dd>
 
 <dt>--imap-fetch-unflagged</dt>
-<dd>X-Spam-Flag�إå����դ��Ƥ��ʤ��᡼��Τߤ�ؽ���Ƚ����оݤȤ���Ȥ����Ѥ��롣</dd>
+<dd>X-Spam-Flagヘッダが付いていないメールのみを学習、判定の対象とするとき使用する。</dd>
 
 <dt>--imap-reset-seen-flag</dt>
-<dd>bsfilter���إå������������᡼�롢�̤Υե�����˰�ư�����᡼���SEEN�ե饰��ꥻ�åȤ��롣</dd>
+<dd>bsfilterがヘッダを挿入したメール、別のフォルダに移動したメールのSEENフラグをリセットする。</dd>
 
 <dt><strong>--ssl</strong></dt>
-<dd>--imap-server�ǻ��ꤷ�������ФȤδ֤�IMAP over SSL����Ѥ��롣</dd>
+<dd>--imap-serverで指定したサーバとの間でIMAP over SSLを使用する。</dd>
 
 <dt><strong>--ssl-cert filename|dirname</strong></dt>
-<dd>IMAP over SSL�κݤ˻��Ѥ�����������ꤹ�롣</dd>
+<dd>IMAP over SSLの際に使用する証明書を指定する。</dd>
 </dl>
 
-<h3>--imap����Ѥ��Ƥ������̵���ʥ��ץ����</h3>
-<p>--pipe��̵���Ǥ��롣</p>
+<h3>--imapを使用している場合に無効なオプション</h3>
+<p>--pipeは無効である。</p>
 
-<h3>������</h3>
-<p>bsfilter.conf����</p>
+<h3>使用例</h3>
+<p>bsfilter.confの例</p>
 <pre>
 imap-server imap.example.com
 imap-auth login
 imap-user hanako
 imap-password open_sesame
 </pre>
-<p>inbox�����X-Spam-Flag���Ĥ��Ƥ��ʤ��᡼���Ƚ�ꤷ��Ƚ���̤�إå������졢spam�ξ���inbox.spam�˰�ư������</p>
+<p>inboxの中のX-Spam-Flagがついていないメールを判定し、判定結果をヘッダに入れ、spamの場合はinbox.spamに移動する例</p>
 <pre>
 % bsfilter --imap --imap-fetch-unflagged --insert-flag --insert-probability --imap-folder-spam inbox.spam inbox
 </pre>
 
-<h2><a id="pop">8. �Ȥ���(POP proxy��)</a></h2>
-<p>POP proxy�Ȥ���ư���MUA�������Ф���POP�Ǽ��������ϩ������ǡ��᡼���Ƚ�ꤷ�إå����������뤳�Ȥ���ǽ�Ǥ��롣--auto-update�ˤ�뼫ư�ؽ��ϹԤ��뤬��--add-clean��--add-spam�ˤ��ؽ��ϹԤ��ʤ���
+<h2><a id="pop">8. 使い方(POP proxy編)</a></h2>
+<p>POP proxyとして動作し、MUAがサーバからPOPで受信する経路の途中で、メールを判定しヘッダを挿入することが可能である。--auto-updateによる自動学習は行えるが、--add-clean、--add-spamによる学習は行えない。
 </p>
-<p>pop.example.com�Υݡ���110��POP�����Ф�ư���Ƥ���Ȥ��롣</p>
-<p class="fig"><img src="pop-without-bsfilter.png" alt="bsfilter�ʤ���POP" /></p>
+<p>pop.example.comのポート110でPOPサーバが動いているとする。</p>
+<p class="fig"><img src="pop-without-bsfilter.png" alt="bsfilterなしのPOP" /></p>
 
 <p>
-bsfilter��POP proxy�Ȥ���ư��롣�����Ф�bsfilter�֡�bsfilter��MUA�֤�POP����Ѥ��롣bsfilter�����ǡ��᡼���Ƚ�ꤷ�إå����������롣���ξ��ϡ��ʲ��Τ褦���ץ��������ꤹ��(--pop-port�Υǥե���Ȥ�110��--pop-poryx-port�Υǥե���Ȥ�10110�ʤΤǡ���ά��ǽ)��
+bsfilterがPOP proxyとして動作する。サーバとbsfilter間、bsfilterとMUA間はPOPを使用する。bsfilter内部で、メールを判定しヘッダを挿入する。この場合は、以下のようオプションを設定する(--pop-portのデフォルトは110、--pop-poryx-portのデフォルトは10110なので、省略可能)。
 </p>
 <pre>
 % bsfilter --pop --auto-update --insert-flag --insert-probability --pop-server pop.example.com --pop-port 110 --pop-proxy-port 10110
 </pre>
-<p class="fig"><img src="pop-with-bsfilter.png" alt="POP proxy�Ȥ���ư��" /></p>
+<p class="fig"><img src="pop-with-bsfilter.png" alt="POP proxyとして動作" /></p>
 
 <p>
-pops.exmaple.com��POP over SSL����Ѥ��Ƥ�����ϡ������Ф�bsfilter�֤�POP over SSL��bsfilter��MUA�֤�POP����Ѥ��롣
+pops.exmaple.comがPOP over SSLを使用している場合は、サーバとbsfilter間はPOP over SSL、bsfilterとMUA間はPOPを使用する。
 </p>
 <pre>
 % bsfilter --ssl --pop --auto-update --insert-flag --insert-probability --pop-server pops.example.com --pop-port 995 --pop-proxy-port 10110
 </pre>
-<p class="fig"><img src="pops-with-bsfilter.png" alt="POP proxy�Ȥ���ư��(SSL)" /></p>
+<p class="fig"><img src="pops-with-bsfilter.png" alt="POP proxyとして動作(SSL)" /></p>
 
 
-<h3>POP�˴ؤ��륪�ץ����</h3>
+<h3>POPに関するオプション</h3>
 
 <dl>
 <dt>--pop</dt>
-<dd>POP proxy�Ȥ���ư�������˻��ꤹ�롣ɬ�ܡ�</dd>
+<dd>POP proxyとして動作させる場合に指定する。必須。</dd>
 
 <dt>--tasktray</dt>
-<dd>windows��VisualuRuby���ѻ����������ȥ쥤�˾��󤵤��롣</dd>
+<dd>windowsでVisualuRuby使用時、タスクトレイに常駐させる。</dd>
 
 <dt>--pop-server hostname</dt>
-<dd>POP�����Ф���ꤹ�롣</dd>
+<dd>POPサーバを指定する。</dd>
 
 <dt>--pop-port number</dt>
-<dd>POP�����Ф����Ѥ��Ƥ���ݡ����ֹ����ꤹ�롣�ǥե���Ȥ�110��</dd>
+<dd>POPサーバが使用しているポート番号を指定する。デフォルトは110。</dd>
 
 <dt>--pop-proxy-if address</dt>
-<dd>bsfilter���ᥤ�餫��Υꥯ�����Ȥ������륤�󥿡��ե������Υ��ɥ쥹����ꤹ�롣
-�ǥե���Ȥ�0.0.0.0�����ƤΥ��󥿡��ե��������������롣</dd>
+<dd>bsfilterがメイラからのリクエストを受け取るインターフェイスのアドレスを指定する。
+デフォルトは0.0.0.0で全てのインターフェイスから受け取る。</dd>
 
 <dt>--pop-proxy-port number</dt>
-<dd>bsfilter���ᥤ�餫��Υꥯ�����Ȥ�������ݡ����ֹ����ꤹ�롣�ǥե���Ȥ�10110��</dd>
+<dd>bsfilterがメイラからのリクエストを受け取るポート番号を指定する。デフォルトは10110。</dd>
 
 <dt>--pop-user name</dt>
-<dd>����Υ桼���Τ߻��Ѥ���Ĥ�����˻��Ѥ��롣POP�����ФǤΥ桼���͡������ꤹ�롣</dd>
+<dd>特定のユーザのみ使用を許可する場合に使用する。POPサーバでのユーザネームを指定する。</dd>
 
 <dt>--pop-proxy-set set[,set...]</dt>
 <dd>
-POP proxy�Υ롼��򵭽Ҥ��롣ʣ�����ҤǤ��롣--pop-server, --pop-port, --pop-proxy-port, --pop-user���ץ��������˻��Ѥ��롣
-�롼��Υե����ޥåȤ�"pop-server:[pop-port]:[proxy-interface]:proxy-port[:pop-user]"
+POP proxyのルールを記述する。複数記述できる。--pop-server, --pop-port, --pop-proxy-port, --pop-userオプションの代りに使用する。
+ルールのフォーマットは"pop-server:[pop-port]:[proxy-interface]:proxy-port[:pop-user]"
 <dl>
-<dt>pop-server</dt><dd>POP�����Ф���ꤹ�롣</dd>
-<dt>pop-port</dt><dd>POP�����Ф����Ѥ��Ƥ���ݡ����ֹ����ꤹ�롣��ά����110��</dd>
-<dt>proxy-interface</dt><dd>bsfilter���ᥤ�餫��Υꥯ�����Ȥ������륤�󥿡��ե���������ꤹ�롣��ά�������ƤΥ��󥿡��ե��������������롣</dd>
-<dt>proxy-port</dt><dd>bsfilter���ᥤ�餫��Υꥯ�����Ȥ�������ݡ����ֹ����ꤹ�롣</dd>
-<dt>pop-user</dt><dd>����Υ桼���Τ߻��Ѥ���Ĥ�����˻��Ѥ��롣POP�����ФǤΥ桼���͡������ꤹ�롣</dd>
+<dt>pop-server</dt><dd>POPサーバを指定する。</dd>
+<dt>pop-port</dt><dd>POPサーバが使用しているポート番号を指定する。省略時は110。</dd>
+<dt>proxy-interface</dt><dd>bsfilterがメイラからのリクエストを受け取るインターフェイスを指定する。省略時は全てのインターフェイスから受け取る。</dd>
+<dt>proxy-port</dt><dd>bsfilterがメイラからのリクエストを受け取るポート番号を指定する。</dd>
+<dt>pop-user</dt><dd>特定のユーザのみ使用を許可する場合に使用する。POPサーバでのユーザネームを指定する。</dd>
 </dl></dd>
 
 <dt>--pop-max-size number</dt>
-<dd>���ꤷ���Х��ȿ��ʾ�Υ᡼��ˤĤ��ƤϽ�����Х��ѥ�����Ƚ�ꡢ�ؽ����оݤˤ��ʤ���
-0����ꤹ��ȡ����ƤΥե������Ƚ�ꡢ�ؽ����оݤˤ��롣�ǥե���Ȥ�50000(50Kbytes)��</dd>
+<dd>指定したバイト数以上のメールについては処理をバイパスし、判定、学習の対象にしない。
+0を指定すると、全てのファイルを判定、学習の対象にする。デフォルトは50000(50Kbytes)。</dd>
 
 <dt>--pid-file filename</dt>
-<dd>Process ID��Ͽ����ե�����͡������ꤹ�롣�ǥե���Ȥϡ�bsfilter�ۡ���ǥ��쥯�ȥ��bsfilter.pid��</dd>
+<dd>Process IDを記録するファイルネームを指定する。デフォルトは、bsfilterホームディレクトリのbsfilter.pid。</dd>
 
 <dt><strong>--ssl</strong></dt>
-<dd>--pop-server�ǻ��ꤷ�������ФȤδ֤�POP over SSL����Ѥ��롣</dd>
+<dd>--pop-serverで指定したサーバとの間でPOP over SSLを使用する。</dd>
 
 <dt><strong>--ssl-cert filename|dirname</strong></dt>
-<dd>POP over SSL�κݤ˻��Ѥ�����������ꤹ�롣</dd>
+<dd>POP over SSLの際に使用する証明書を指定する。</dd>
 
 </dl>
 
-<h3>--pop����Ѥ��Ƥ������̵���ʥ��ץ����</h3>
-<p>--pipe���ڤӡ�--add-clean�����ؽ��˴ؤ��륳�ޥ�ɡ����ץ�����̵���Ǥ��롣</p>
+<h3>--popを使用している場合に無効なオプション</h3>
+<p>--pipe、及び、--add-clean等、学習に関するコマンド、オプションは無効である。</p>
 
 
 <h2><a id="faq">9. FAQ</a></h2>
-<h3>Q. IMAP over SSL�κݤ˾��������ꤹ��Ȱ۾ｪλ����</h3>
-<p>rubyɸ��饤�֥���net/imap.rb�����ꡣruby-1.8.3�ʹߤʤ�����ʤ��Ϥ�</p>
+<h3>Q. IMAP over SSLの際に証明書を指定すると異常終了する</h3>
+<p>ruby標準ライブラリのnet/imap.rbの問題。ruby-1.8.3以降なら問題ないはず</p>
 
-<h3>Q. in `get_all_responses': Mailbox does not exist, or must be subscribed to. (Net::IMAP::NoResponseError)�Ȥ������顼�������Τ�����</h3>
-<p>�᡼��ܥå�����̾�����ְ�äƤ���Ȼפ��롣ruby-1.8��imap.rb�ǰʲ��Τ褦�ˤ���Ĵ�٤�Ȥ褤��</p>
+<h3>Q. in `get_all_responses': Mailbox does not exist, or must be subscribed to. (Net::IMAP::NoResponseError)というエラーで落ちるのだけど</h3>
+<p>メールボックスの名前が間違っていると思われる。ruby-1.8のimap.rbで以下のようにして調べるとよい。</p>
 <pre>
 % ruby /usr/local/lib/ruby/1.8/net/imap.rb --user=taro --auth=login imap.example.com
 password: ******
@@ -512,80 +504,80 @@ taro@imap.example.com&gt; list
  INBOX
 </pre>
 
-<h3>Q. windows�ǻȤ������Τ�����?</h3>
-<p>mswin32�ǡ�cygwin����������Ruby�����󥹥ȡ���Ѥߤξ��ϡ�bsfilter�Υ����������̤˼¹Ԥ���Ф褤��</p>
+<h3>Q. windowsで使いたいのだけど?</h3>
+<p>mswin32版、cygwin版等、既にRubyがインストール済みの場合は、bsfilterのソースを普通に実行すればよい。</p>
 
-<h3>Q. exit status�ϤɤΤ褦�ˤʤäƤ���?</h3>
-<p>�̾��0��--pipe���ץ����ʤ���Ƚ���оݥ᡼���ɸ�����Ϥ���Ϳ�������Τߡ�Ƚ���̤�exit status�������뤳�Ȥ�����롣
-���ξ�硢spam��0��clean��1�Ȥ���exit status�ˤʤ롣</p>
+<h3>Q. exit statusはどのようになっている?</h3>
+<p>通常は0。--pipeオプションなしで判定対象メールを標準入力から与えた場合のみ、判定結果をexit statusから得ることが出来る。
+その場合、spamは0、cleanは1というexit statusになる。</p>
 
-<h3>Q. <code>No such file to load -- sdbm</code>�Ȥ������顼���Ф롣</h3>
-<p>sdbm����Ѳ�ǽ�ˤ��롣�㤨��debian�ξ��ϡ�libsdbm-ruby�򥤥󥹥ȡ��뤹�롣</p>
+<h3>Q. <code>No such file to load -- sdbm</code>というエラーが出る。</h3>
+<p>sdbmを使用可能にする。例えばdebianの場合は、libsdbm-rubyをインストールする。</p>
 
-<h3>Q. mew�Ȱ��˻Ȥ��ˤ�?</h3>
-<p><a href="mew.html">bsfilter with mew</a>�򻲾ȡ�</p>
+<h3>Q. mewと一緒に使うには?</h3>
+<p><a href="mew.html">bsfilter with mew</a>を参照。</p>
 
-<h3>Q. Wanderlust����Ȥ��ˤ�?</h3>
-<p>��ޤ������餵��wl-bsfilter.el������档 
-<a href="http://arika.org/diary/20030718.html#p01">\ay diary</a>��
-<a href="http://lists.airs.net/wl/archive/200307/msg00049.html">Re: Mark &amp; Action (Re: 2����κ�����ޥ��)</a>���顣</p>
+<h3>Q. Wanderlustから使うには?</h3>
+<p>やまだあきらさんがwl-bsfilter.elを公開中。 
+<a href="http://arika.org/diary/20030718.html#p01">\ay diary</a>、
+<a href="http://lists.airs.net/wl/archive/200307/msg00049.html">Re: Mark &amp; Action (Re: 2種類の削除コマンド)</a>から。</p>
 
-<h3>Q. ���ܸ�μ�갷����?</h3>
-<p>�᡼�뤬���ܸ줫�ݤ���ad hoc��Ƚ�Ǥ������ܸ�餷������nkf.so��EUC
-���Ѵ����Ƥ��롣Subject����ʸ��ISO-2022-JP��̾���Ĥġ��ºݤΥ����ɤ�
-shift jis�Ȥ����������⡢nkf���ߤäƤ���Ƥ������͡�iconv���Ȥ���С�unicode�⥵�ݡ��ȡ�
+<h3>Q. 日本語の取り扱いは?</h3>
+<p>メールが日本語か否かをad hocに判断し、日本語らしき場合はnkf.soでEUC
+に変換している。Subjectや本文でISO-2022-JPと名乗りつつ、実際のコードは
+shift jisというケースも、nkfが救ってくれている模様。iconvが使えれば、unicodeもサポート。
 </p>
-<p>�Ƽ�ǡ����١����ϡ����ܸ��ѤȤ���¾�Ѥ�ʬ���Ƥ��롣</p>
-<p>�ǥե���ȤǤ�Ϣ³�������2ʸ��(bigram)���������ʤ�token�Ȥ��ư��äƤ��롣
-MeCab(������)�ˤ������ǲ��Ϥ�Ԥ��ˤϡ�MeCab��ruby�Х���ǥ��󥰤򥤥󥹥ȡ��뤷��
-<code>--jtokenizer MeCab</code>����ꤹ��Ф褤��ChaSen, KAKASI�ˤĤ��Ƥ�Ʊ�͡�</p>
+<p>各種データベースは、日本語用とその他用に分けてある。</p>
+<p>デフォルトでは連続する漢字2文字(bigram)、カタカナをtokenとして扱っている。
+MeCab(和布蕪)による形態素解析を行うには、MeCabとrubyバインディングをインストールし、
+<code>--jtokenizer MeCab</code>を指定すればよい。ChaSen, KAKASIについても同様。</p>
 
-<h3>Q. -a���ץ�������Ѥ����顢clean�ʥ᡼���spam�ȸ�Ƚ�ꤵ�줿����Ƚ��˴�Ť��������줿�ǡ����١������Ф����н��?</h3>
-<p>��Ƚ�ꤵ�줿�᡼�뤬<code>~/Mail/spam/123</code>�Ǥ���ʤ顢</p>
+<h3>Q. -aオプションを使用したら、cleanなメールをspamと誤判定された。誤判定に基づき更新されたデータベースに対する対処は?</h3>
+<p>誤判定されたメールが<code>~/Mail/spam/123</code>であるなら、</p>
 <pre>
 % bsfilter --sub-spam --add-clean --update ~/Mail/spam/123 
 </pre>
-<p>�Ȥ��롣<code>~/Mail/spam/123</code>��spam token database����������
-clean token database���ɲä�����Ψ�ǡ����١����򹹿����롣</p>
+<p>とする。<code>~/Mail/spam/123</code>をspam token databaseから削除し、
+clean token databaseに追加し、確率データベースを更新する。</p>
 
-<h3>Q. ���˼�����ä�spam����¸���Ƥ��ʤ��Τǡ�spam token database�����ʤ����ɤ���Ф褤?</h3>
-<p><a href="http://tlec.linux.or.jp/docs/spamassassin.html">TLEC presents spamassassin �� fetchmail �������Ѥ�����ˡ</a>
-�ǾҲ𤵤�Ƥ��롢
-<a href="http://www.flcl.org/~yoh/yoh_spam_050102.tar.bz2">Linux-users�ᥤ��󥰥ꥹ�Ȥ�spam�򤫤����᤿���</a>�����Ѥ���Τ�������</p>
+<h3>Q. 過去に受け取ったspamを保存していないので、spam token databaseが作れない。どうればよい?</h3>
+<p><a href="http://tlec.linux.or.jp/docs/spamassassin.html">TLEC presents spamassassin を fetchmail から利用する方法</a>
+で紹介されている、
+<a href="http://www.flcl.org/~yoh/yoh_spam_050102.tar.bz2">Linux-usersメイリングリストのspamをかき集めたもの</a>を利用するのが便利。</p>
 
-<p>FreeBSD ports-jp ML�ΰʲ��Υ��������֤�spam�Τߡ�</p>
+<p>FreeBSD ports-jp MLの以下のアーカイブはspamのみ。</p>
 <ul>
 <li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17201-17300.tar.gz">ports-jp-17201-17300.tar.gz</a></li>
 <li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17301-17400.tar.gz">ports-jp-17301-17400.tar.gz</a></li>
 <li><a href="ftp://daemon.jp.freebsd.org/pub/FreeBSD-jp/mail-archives/ports-jp/ports-jp-17401-17500.tar.gz">ports-jp-17401-17500.tar.gz</a></li>
 </ul>
 
-<h3>Q. Paul Graham������Gary Robinson������Gary Robinson-Fisher�������ڤ��ؤ���ˤ�?</h3>
-<p>Paul Graham�����ȡ�Gary Robinson��Gary Robinson-Fisher�����Ȥδ֤��ڤ��ؤ���ˤϡ�
--u��spam��Ψ�ǡ����١����򹹿�����Ȥ���������ľ����spam��Ψ�ǡ����١����򹹿�����Ȥ�(maintenance mode)�ȡ�
-�᡼���spam��Ƚ�ꤵ����Ȥ�(filtering mode)�Ȥǡ�Ʊ��������-m���ץ����ǻ��ꤹ��ɬ�פ����롣</p>
-<p>Gary Robinson�����ȡ�Gary Robinson-Fisher�����δ֤��ڤ��ؤ���Ȥ��ˤϡ�-u�����פǤ��롣</p>
-<p>-c��-s��token�������Ȥ����������˰�¸���Ƥ��ʤ��Τǡ��ɤξ�����ľ��ɬ�פϤʤ���</p>
+<h3>Q. Paul Graham方式、Gary Robinson方式、Gary Robinson-Fisher方式を切り替えるには?</h3>
+<p>Paul Graham方式と、Gary Robinson、Gary Robinson-Fisher方式との間で切り替えるには、
+-uでspam確率データベースを更新するところからやり直す。spam確率データベースを更新するとき(maintenance mode)と、
+メールをspamか判定させるとき(filtering mode)とで、同じ方式を-mオプションで指定する必要がある。</p>
+<p>Gary Robinson方式と、Gary Robinson-Fisher方式の間で切り替えるときには、-uは不要である。</p>
+<p>-c、-sでtokenを数えるところは方式に依存していないので、どの場合もやり直す必要はない。</p>
 
-<h3>Q. Paul Graham������Gary Robinson�����ΰ㤤��?</h3>
-<p>token���Ȥ�spam��Ψ�������ˡ���������Ѥ��ƥ᡼���spam��Ψ�������ˡ��ξ���Ȥ�ۤʤ롣</p>
-<p>Paul Graham�����Ǥ�token���Ȥ�spam��Ψ��pg(w)�Ȥ��롣pg(w)�����ݤ���ħ��󤲤롣</p>
+<h3>Q. Paul Graham方式とGary Robinson方式の違いは?</h3>
+<p>tokenごとのspam確率を求める方法、それを使用してメールのspam確率を求める方法、両方とも異なる。</p>
+<p>Paul Graham方式でのtokenごとのspam確率をpg(w)とする。pg(w)を求める際の特徴を挙げる。</p>
 <ul>
-<li>clean�������˥Х������򤫤��뤿��ˡ�clean�ʥ᡼����Ǥμºݤ�token�и������2�ܤ��Ƥ��顢�׻����롣</li>
-<li>���˽в�ä����ȤΤʤ�token��pg(w)�ϡ�0.4�Ȥ��롣</li>
+<li>cleanな方向にバイアスをかけるために、cleanなメール中での実際のtoken出現回数を2倍してから、計算する。</li>
+<li>過去に出会ったことのないtokenのpg(w)は、0.4とする。</li>
 </ul>
-<p>Gary Robinson�����Ǥ�token���Ȥ�spam��Ψ��f(w)�Ȥ��롣�ʲ��Τ褦�˵��롣</p>
+<p>Gary Robinson方式でのtokenごとのspam確率をf(w)とする。以下のように求める。</p>
 <ul>
-<li>token�и�����˥Х������򤫤����ˡ�token���Ȥ�spam��Ψp(w)����롣</li>
-<li>��token�Ǥ�p(w)��ʿ���ͤ�robx��token�νи������n���������(�㤨��0.001)��robs�Ȥ��ơ�
+<li>token出現回数にバイアスをかけずに、tokenごとのspam確率p(w)を求める。</li>
+<li>全tokenでのp(w)の平均値をrobx、tokenの出現回数をn、ある定数(例えば0.001)をrobsとして、
 <pre>
 f(w) = ((s * robx) + (n * p(w))) / (robs + n)
 </pre>
-�Ȥ��롣���˽в�ä����ȤΤʤ�token��f(w)�⡢���μ��ǥ��С�����롣</li>
+とする。過去に出会ったことのないtokenのf(w)も、この式でカバーされる。</li>
 </ul>
-<p>Paul Graham�����Ǥϡ���ħŪ��(0.5����)pg(w)�����15��token����Ѥ���combining probability���ᡢ
-�����᡼���spam��Ψ�Ȥ��Ƥ��롣</p>
-<p>Gary Robinson�����Ǥϡ��ʲ��ǵ�᤿S��᡼���spam��Ψ�Ȥ���(bsfilter��ɽ������Τ�S2)��</p>
+<p>Paul Graham方式では、特徴的な(0.5より遠い)pg(w)を持つ15のtokenを使用してcombining probabilityを求め、
+それをメールのspam確率としている。</p>
+<p>Gary Robinson方式では、以下で求めたSをメールのspam確率とする(bsfilterが表示するのはS2)。</p>
 <pre>
 P = 1 - ((1 - f(w1)) * (1 - f(w2)) * ... * (1 - f(wn))) ^ (1 / n)
 Q = 1 - (f(w1) * f(w2) * ... * f(wn)) ^ (1 / n)
@@ -593,8 +585,8 @@ S = (P - Q) / (P + Q)
 S2 = (1 + S) / 2
 </pre>
 
-<h3>Q. Gary Robinson������Gary Robinson-Fisher�����ΰ㤤��?</h3>
-<p>f(w)�����Ȥ����ޤǤ�Ʊ��������ʹߡ�Robinson-Fisher�����Ǥϰʲ��Τ褦�˷׻����롣</p>
+<h3>Q. Gary Robinson方式とGary Robinson-Fisher方式の違いは?</h3>
+<p>f(w)を求めるところまでは同じ。それ以降、Robinson-Fisher方式では以下のように計算する。</p>
 <pre>
 P = ((1 - f(w1)) * (1 - f(w2)) * ... * (1 - f(wn))) ^ (1 / n)
 Q = (f(w1) * f(w2) * ... * f(wn)) ^ (1 / n)
@@ -603,68 +595,68 @@ Q' = 1 - chi-square(-2 * log(Q), 2 * n)
 S = (1 + P' - Q') / 2
 </pre>
 
-<h2><a id="bug">10. �Х�</a></h2>
+<h2><a id="bug">10. バグ</a></h2>
 <p>
-���ޥ�ɥ饤������ǡ�mbox�����Υե��������ꤹ�뤳�Ȥ��ǽ�Ǥ��뤬��
-<code>Content-length</code>�إå��򸫤뵡ǽ���ʤ������Τ��ᡢSolaris�Τ褦��
-��ʸ���"From"�����������פ���ʤ������ƥ�Ǥϡ���ʸ���"From"��
-UnixFrom�ȸ����뤳�Ȥ��ͤ����롣
-bsfilter��ɽ������᡼����ֹ�ȡ�MUA�Ǥ��ֹ椬�����㤦�㳲��ȯ������Ȼפ��롣
+コマンドライン引数で、mbox形式のファイルを指定することも可能であるが、
+<code>Content-length</code>ヘッダを見る機能がない。そのため、Solarisのように
+本文中の"From"がエスケープされないシステムでは、本文中の"From"を
+UnixFromと見誤ることが考えられる。
+bsfilterが表示するメールの番号と、MUAでの番号が食い違う障害が発生すると思われる。
 </p>
-<p>�����ɤ�������</p>
-<p>bsfilter�Ȥ���̾������ľ��</p>
+<p>コードが汚い。</p>
+<p>bsfilterという名前が安直。</p>
 
-<h2><a id="update">11. ��������</a></h2>
-<p><a href="http://nabeken.tdiary.net">ɮ�Ԥ�����</a>��
-<a href="http://nabeken.tdiary.net/?category=bsfilter">bsfilter���ƥ���</a>�����ѡ�</p>
+<h2><a id="update">11. 更新履歴</a></h2>
+<p><a href="http://nabeken.tdiary.net">筆者の日記</a>の
+<a href="http://nabeken.tdiary.net/?category=bsfilter">bsfilterカテゴリ</a>で代用。</p>
 
-<h2><a id="link">12. ���� / ���</a></h2>
+<h2><a id="link">12. 情報源 / リンク</a></h2>
 <ul>
 
-<li>bsfilter�ˤĤ���<ul>
-<li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilter�ե������</strong></a></li>
-<li><a href="http://sylpheed.good-day.net/"><strong>Sylpheed   - lightweight and user-friendly e-mail client -</strong></a> bsfilter��ƤӽФ������ɸ����Ѱդ���Ƥ���</li>
-<li><a href="http://kiw.paslog.jp/article/123343.html"><strong>JunkMailControl Plugin for EdMax</strong> �����ǻ��Ѥ���Ƥ��볰���ץ�����बbsfilterw.exe</a></li>
-<li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html">bsfilter</a> qmail�ǻȤ���ˡ���ܤäƤ���</li>
-<li><a href="http://www.wikiroom.com/mew/?Mew4FAQ">Mew4 FAQ</a> mew����POP proxy�Ȥ��ƻȤ���ˡ���ܤäƤ���</li>
-<li><a href="http://www.fkimura.com/bsfilter0.html">bsfilter��Ƴ�����Ѥ��Ƥߤ���</a></li>
+<li>bsfilterについて<ul>
+<li><a href="http://sourceforge.jp/forum/?group_id=1011"><strong>bsfilterフォーラム</strong></a></li>
+<li><a href="http://sylpheed.good-day.net/"><strong>Sylpheed   - lightweight and user-friendly e-mail client -</strong></a> bsfilterを呼び出す設定も標準で用意されている</li>
+<li><a href="http://kiw.paslog.jp/article/123343.html"><strong>JunkMailControl Plugin for EdMax</strong> 説明で使用されている外部プログラムがbsfilterw.exe</a></li>
+<li><a href="http://yang.amp.i.kyoto-u.ac.jp/~yyama/FreeBSD/mail/bsfilter-j.html">bsfilter</a> qmailで使う方法が載っている</li>
+<li><a href="http://www.wikiroom.com/mew/?Mew4FAQ">Mew4 FAQ</a> mewからPOP proxyとして使う方法が載っている</li>
+<li><a href="http://www.fkimura.com/bsfilter0.html">bsfilterを導入利用してみるメモ</a></li>
 <li><a href="http://www.netlaputa.ne.jp/~kose/Emacs/200403.html#3.+spam+fi">Practice makes perfect</a></li>
-<li><a href="http://www.db.is.kyushu-u.ac.jp/computer/solarisserver/bsfilter.html">Solaris �Ǥ� bsfilter</a></li>
+<li><a href="http://www.db.is.kyushu-u.ac.jp/computer/solarisserver/bsfilter.html">Solaris での bsfilter</a></li>
 <li><a href="http://www.imasy.or.jp/~tai/wiki/index.php?BsFilterHelper">BsFilterHelper</a></li>
-<li><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter������(Windows��)</a></li>
-<li><a href="http://www.pitecan.com/Lens/">Lens(�᡼�뿶��ʬ���ץ������)</a> bsfilter����Ѥ��륵��ץ뤬�ܤäƤ���</li>
-<li><a href="http://d.hatena.ne.jp/wakatono/20040324#p1">wakatono�ε�����</a> Lens����bsfilter��饤�֥��Ȥ��ƻȤ��㤬�ܤäƤ���</li>
-<li><a href="http://www.ganaware.jp/archives/2003/12/imap.html">GANAware:IMAP</a>Mew4������Ѥ�����ˡ���ܤäƤ���</li>
+<li><a href="http://nadmin.org/howto/bsfilter-on-windows.html">bsfilter設定メモ(Windows編)</a></li>
+<li><a href="http://www.pitecan.com/Lens/">Lens(メール振り分けプログラム)</a> bsfilterを使用するサンプルが載っている</li>
+<li><a href="http://d.hatena.ne.jp/wakatono/20040324#p1">wakatonoの戯れメモ</a> Lensからbsfilterをライブラリとして使う例が載っている</li>
+<li><a href="http://www.ganaware.jp/archives/2003/12/imap.html">GANAware:IMAP</a>Mew4から使用する方法が載っている</li>
 <li><a href="http://megane.no-ip.info:8080/tiki/tiki.cgi?c=v&amp;p=bsfilter">H.Okada bsfilter</a></li>
-<li><a href="http://dir.itc.u-tokyo.ac.jp/~okabe/ja/bsfilter.shtml">���ѥ�ե��륿 BsFilter ������</a></li>
-<li><a href="http://w3.itoh.net/bsfilter.html">bsfilter��SPAM����</a></li>
-<li><a href="http://www.shinonon.dyndns.org/diary/20031210.html#p01">bsfilter on beckrb</a> Becky! ver.2�Υץ饰����Ǥ���beckrb�ǡ�bsfilter��Ȥä�SPAM�ե��륿��󥰤��륹����ץ�</li>
-<li><a href="http://www.eonet.ne.jp/~yasuo/bsfilter/">bsfilter on Mac OS X</a> POP proxy�Ȥ��ƻȤ���ˡ���ܤäƤ���</li>
-<li><a href="http://www.studio-sbs.org/diary/?200308c&amp;to=200308280#200308280">�����ֽ���ž������</a> postfix -&gt; bsfilter -&gt; sieve -&gt; cyrus imapd �Ȥ�����ϩ�Ǥλ�����ˡ����������Ƥ���</li>
-<li><a href="http://www.olug.gr.jp/index.php?%5B%5Bbsfilter%5D%5D">����Linux�桼������(OLUG)�Υڡ���</a> ML�����ФǤλ����㤬�ܤäƤ���</li>
-<li><a href="http://kazuhiko.tdiary.net/20030522.html#p02">�դ��ߤˤ�����</a> qmail�ǻȤ���ˡ���ܤäƤ���</li>
+<li><a href="http://dir.itc.u-tokyo.ac.jp/~okabe/ja/bsfilter.shtml">スパムフィルタ BsFilter の設定</a></li>
+<li><a href="http://w3.itoh.net/bsfilter.html">bsfilterでSPAM撲滅</a></li>
+<li><a href="http://www.shinonon.dyndns.org/diary/20031210.html#p01">bsfilter on beckrb</a> Becky! ver.2のプラグインであるbeckrbで、bsfilterを使ってSPAMフィルタリングするスクリプト</li>
+<li><a href="http://www.eonet.ne.jp/~yasuo/bsfilter/">bsfilter on Mac OS X</a> POP proxyとして使う方法が載っている</li>
+<li><a href="http://www.studio-sbs.org/diary/?200308c&amp;to=200308280#200308280">真・講習会転倒日記</a> postfix -&gt; bsfilter -&gt; sieve -&gt; cyrus imapd という経路での使用方法が説明されている</li>
+<li><a href="http://www.olug.gr.jp/index.php?%5B%5Bbsfilter%5D%5D">沖縄Linuxユーザー会(OLUG)のページ</a> MLサーバでの使用例が載っている</li>
+<li><a href="http://kazuhiko.tdiary.net/20030522.html#p02">ふぇみにん日記</a> qmailで使う方法が載っている</li>
 </ul></li>
 
-<li>spam�ˤĤ���<ul>
-<li><a href="http://www.isc.meiji.ac.jp/~hhat/report/SPAM.pdf">Bayesian Filtering���Ѥ���spam�к�(pdf)</a> bsfilter����Ѥ���ɾ����ܤäƤ���</li>
-<li><a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">���ѥ�ؤ��к� ---A Plan for Spam</a></li>
-<li><a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">�٥�������ե��륿�β��� --- Better Bayesian Filtering</a></li>
-<li><a href="http://www.shiro.dreamhost.com/scheme/trans/ffb-j.html">ȿ�⤹��ե��륿 --- Filters That Fight Back</a></li>
+<li>spamについて<ul>
+<li><a href="http://www.isc.meiji.ac.jp/~hhat/report/SPAM.pdf">Bayesian Filteringを用いたspam対策(pdf)</a> bsfilterを使用した評価も載っている</li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/spam-j.html">スパムへの対策 ---A Plan for Spam</a></li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/better-j.html">ベイジアンフィルタの改善 --- Better Bayesian Filtering</a></li>
+<li><a href="http://www.shiro.dreamhost.com/scheme/trans/ffb-j.html">反撃するフィルタ --- Filters That Fight Back</a></li>
 <li><a href="http://www.sophos.com/spaminfo/explained/fieldguide.html">Field Guide to Spam</a></li>
 <li><a href="http://radio.weblogs.com/0101454/stories/2002/09/16/spamDetection.html">Spam Detection</a></li>
 <li><a href="http://www.shiro.dreamhost.com/scheme/wiliki/wiliki.cgi?Shiro%3aUnixUser0309&amp;l=jp">Shiro:UnixUser0309</a></li>
 </ul></li>
 
-<li>spam�к��ġ���ˤĤ���<ul>
+<li>spam対策ツールについて<ul>
 <li><a href="http://www.shiro.dreamhost.com/scheme/wiliki/wiliki.cgi?Gauche%3ASpamFilter&amp;l=jp">Gauche:SpamFilter</a></li>
-<li><a href="http://sheepman.parfait.ne.jp/wiki/BayesianSpamFilter/">��Ʋ���� BayesianSpamFilter</a></li>
+<li><a href="http://sheepman.parfait.ne.jp/wiki/BayesianSpamFilter/">羊堂本舗 BayesianSpamFilter</a></li>
 <li><a href="http://www.geocities.co.jp/SiliconValley-PaloAlto/7043/index.html#spamfilter.el">spamfilter.el</a></li>
 </ul></li>
 
-<li>��ȯ�˻��Ѥ��Ƥ���ġ���ˤĤ���<ul>
-<li><a href="http://www.ruby-lang.org/ja/">���֥������Ȼظ�������ץȸ���Ruby</a></li>
+<li>開発に使用しているツールについて<ul>
+<li><a href="http://www.ruby-lang.org/ja/">オブジェクト指向スクリプト言語Ruby</a></li>
 <li><a href="http://exerb.sourceforge.jp/">Exerb Project</a></li>
-<li><a href="http://www.osk.3web.ne.jp/~nyasu/software/vrproject.html">VisualuRuby�ײ�ʲ��Ρ�</a></li>
+<li><a href="http://www.osk.3web.ne.jp/~nyasu/software/vrproject.html">VisualuRuby計画（仮称）</a></li>
 </ul></li>
 
 </ul>

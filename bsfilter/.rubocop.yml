@@ -1,0 +1,59 @@
+AllCops:
+  TargetRubyVersion: 2.6
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/ParenthesesAroundCondition:
+  Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
+Style/RedundantReturn:
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
+
+Metrics/AbcSize:
+  Max: 20
+
+Metrics:
+  Enabled: false
+
+Style/FormatStringToken:
+  Enabled: false
+
+Naming:
+  Enabled: false
+  
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/NegatedIf:
+  Enabled: false
+
+Style/RedundantParentheses:
+  Enabled: false
+
+Layout/SpaceAfterNot:
+  Enabled: false
+
+Style/GuardClause:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
+
+Style/ConditionalAssignment:
+  Enabled: false
+
+Style/Next:
+  Enabled: false

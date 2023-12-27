@@ -30,9 +30,7 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Release = '1.0.20-RC1'
-  Release.concat('-') if (Release == '')
-  Revision = '1.0.20-RC1'
+  Revision = Release = '1.0.20-RC2'.freeze
   Languages = %w[C ja].freeze
   Default_Language = 'C'.freeze
 

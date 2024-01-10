@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 ## -*-Ruby-*-
-## Copyright (C) 2003-2023 NABEYA Kenichi
+## Copyright (C) 2003-2024 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@ class Bsfilter
   end
   attr_accessor :token_dbs
 
-  Revision = Release = '1.0.20-RC2'.freeze
+  Revision = 'GIT_HASH'.freeze
+  Release = 'GIT_TAG'.freeze
   Languages = %w[C ja].freeze
   Default_Language = 'C'.freeze
 
@@ -2054,7 +2055,7 @@ EOM
 
       	--pid-file file
       		specify filename for logging process ID of bsfilter
-      		"bsfilter.pid" in bsfilter\'s home directory is used by default#{'		'}
+      		"bsfilter.pid" in bsfilter\'s home directory is used by default
                       this function is valid when "--pop" is specified
 
       	--tasktray
@@ -2070,7 +2071,7 @@ EOM
       	--pop-proxy-if address
       		specify address of interface which bsfilter listens at
       		default is 0.0.0.0 and all interfaces are active
-      #{'		'}
+
       	--pop-proxy-port number
       		specify port number which bsfilter listens at. default is #{Default_pop_proxy_port}
 
@@ -2079,13 +2080,13 @@ EOM
       		bsfilter checks match between value of this options and a name which MUA sends.
       		in case of mismatch, bsfilter closes sockets.
 
-      	--pop-proxy-set set[,set...]#{'        '}
+      	--pop-proxy-set set[,set...]
       		specify rules of pop proxy.
       		alternative way of pop-server, pop-port, pop-proxy-port and pop-user option.
       		format of "set" is "pop-server:pop-port:[proxy-interface]:proxy-port[:pop-user]"
       		If proxy-interface is specified and isn\'t 0.0.0.0 , other interfaces are not used.
       		"--pop-proxy-set 192.168.1.1:110::10110" is equivalent with
-      		"--pop-server 192.168.1.1 --pop-port 110 --pop-proxy-port 10110"#{' 		'}
+      		"--pop-server 192.168.1.1 --pop-port 110 --pop-proxy-port 10110"
 
       	--pop-max-size number
       		When mail is longer than the specified number, the mail is not filtered.
@@ -2320,11 +2321,9 @@ EOM
 
     if (@options['imap'])
       if (@options['ssl'])
-        verify_mode = (OpenSSL::SSL::VERIFY_PEER if (@options['ssl-cert']))
-        imap = Net::IMAP.new(@options['imap-server'], @options['imap-port'], @options['ssl'], @options['ssl-cert'],
-                             verify_mode)
+        imap = Net::IMAP.new(@options['imap-server'], port: @options['imap-port'], ssl: {cert: @options['ssl-cert']})
       else
-        imap = Net::IMAP.new(@options['imap-server'], @options['imap-port'])
+        imap = Net::IMAP.new(@options['imap-server'], port: @options['imap-port'])
       end
       imap.auto_authenticate(@options, @options['imap-auth'], @options['imap-user'], @options['imap-password'],
                              @options['imap-auth-preference'])
@@ -2754,11 +2753,9 @@ EOM
   def do_imap(command_line_args, token_dbs)
     ret_code = CODE_CLEAN
     if (@options['ssl'])
-      verify_mode = (OpenSSL::SSL::VERIFY_PEER if (@options['ssl-cert']))
-      imap = Net::IMAP.new(@options['imap-server'], @options['imap-port'], @options['ssl'], @options['ssl-cert'],
-                           verify_mode)
+      imap = Net::IMAP.new(@options['imap-server'], port: @options['imap-port'], ssl: {cert: @options['ssl-cert']})
     else
-      imap = Net::IMAP.new(@options['imap-server'], @options['imap-port'])
+      imap = Net::IMAP.new(@options['imap-server'], port: @options['imap-port'])
     end
     imap.auto_authenticate(@options, @options['imap-auth'], @options['imap-user'], @options['imap-password'],
                            @options['imap-auth-preference'])
@@ -2931,7 +2928,7 @@ EOM
       include VRTrayiconFeasible
       include VRMenuUseable
       LoadIcon = Win32API.new("user32", "LoadIcon", "II", "I")
-    #{'  '}
+
       def construct
         @traymenu = newPopupMenu
         @traymenu.set([
@@ -2949,7 +2946,7 @@ EOM
         myexstyle.ws_ex_toolwindow = true
         myexstyle.ws_ex_appwindow = false
       end
-    #{'  '}
+
       def exit_clicked
         delete_trayicon(@mytrayicon)
         self.close

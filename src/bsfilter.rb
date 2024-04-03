@@ -1114,10 +1114,10 @@ EOM
       @method.call(str)
     end
 
-    Reg_kanji = Regexp.compile("[\xb0\xa1-\xf4\xa4]+".force_encoding('EUC-JP'))
-    Reg_katakana = Regexp.compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".force_encoding('EUC-JP'))
-    Reg_kanji_katakana = Regexp.compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".force_encoding('EUC-JP'))
-    Reg_not_kanji_katakana = Regexp.compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".force_encoding('EUC-JP'))
+    Reg_kanji = Regexp.compile("[\xb0\xa1-\xf4\xa4]+".dup.force_encoding('EUC-JP'))
+    Reg_katakana = Regexp.compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".dup.force_encoding('EUC-JP'))
+    Reg_kanji_katakana = Regexp.compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
+    Reg_not_kanji_katakana = Regexp.compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
 
     def kakasi(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
@@ -1154,9 +1154,9 @@ EOM
         case hinshi
         when 'BOS/EOS'
           # Skip BOS/EOS
-        when "\xb5\xad\xb9\xe6".force_encoding('EUC-JP')
+        when "\xb5\xad\xb9\xe6".dup.force_encoding('EUC-JP')
           # Skip KIGOU
-        when "\xcc\xbe\xbb\xec".force_encoding('EUC-JP')
+        when "\xcc\xbe\xbb\xec".dup.force_encoding('EUC-JP')
           # MEISHI
           array.push(token) if ((token =~ Reg_kanji_katakana) || (token.bytesize > 2))
         else
@@ -1356,7 +1356,7 @@ EOM
   end
 
   def decode_character_reference2u(str)
-    reg = Regexp.compile('\&\#(\d{1,5}|x[\da-f]{1,4});'.force_encoding('ASCII-8BIT'), Regexp::IGNORECASE)
+    reg = Regexp.compile('\&\#(\d{1,5}|x[\da-f]{1,4});'.dup.force_encoding('ASCII-8BIT'), Regexp::IGNORECASE)
     newstr = if (@options['utf-8'])
                str.gsub(reg) do
                  hex_or_dec = ::Regexp.last_match(1)
@@ -1425,10 +1425,10 @@ EOM
     end
 
     if (lang == 'ja')
-      str.gsub!(Regexp.compile("^[ -\\~]*[\|\>]+".force_encoding('EUC-JP')), '')
-      str.gsub!(Regexp.compile("^[ \\t\xa1\xa1]+".force_encoding('EUC-JP')), '') # delete white space
-      str.gsub!(Regexp.compile('(\\r?\\n){2,}'.force_encoding('EUC-JP')), ' ') # keep multiple newline as space
-      str.gsub!(Regexp.compile('[\\r\\n]+'.force_encoding('EUC-JP')), '') # delete newline
+      str.gsub!(Regexp.compile("^[ -\\~]*[\|\>]+".dup.force_encoding('EUC-JP')), '')
+      str.gsub!(Regexp.compile("^[ \\t\xa1\xa1]+".dup.force_encoding('EUC-JP')), '') # delete white space
+      str.gsub!(Regexp.compile('(\\r?\\n){2,}'.dup.force_encoding('EUC-JP')), ' ') # keep multiple newline as space
+      str.gsub!(Regexp.compile('[\\r\\n]+'.dup.force_encoding('EUC-JP')), '') # delete newline
       str.split.each do |s|
         @jtokenizer.split(s).each do |token|
           token.force_encoding('ASCII-8BIT')
@@ -3075,8 +3075,8 @@ EOM
 
     parser.quiet = true
     begin
-      parser.each_option do |name, arg|
-        name.sub!(/^--/, '')
+      parser.each_option do |n, arg|
+        name = n.sub(/^--/, '')
         if (options[name] && allow_multi[name])
           options[name] += (',' + arg)
         else

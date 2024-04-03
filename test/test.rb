@@ -1,7 +1,7 @@
 # encoding: utf-8
 # -*-Ruby-*- $Id: test.rb,v 1.16 2023/12/26 05:54:06 nabeken Exp $
 
-load '../bsfilter/bsfilter'
+load '../src/bsfilter.rb'
 require 'test/unit'
 require 'fileutils'
 

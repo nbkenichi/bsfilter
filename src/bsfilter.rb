@@ -267,9 +267,9 @@ class Bsfilter
 
   def latin2ascii(str)
     str.force_encoding('ASCII-8BIT')
-    newstr = str.tr("\x92\x93\x94".force_encoding('ASCII-8BIT'), "'''")
-    newstr.tr!("\xc0-\xc5\xc8-\xcb\xcc-\xcf\xd2-\xd6\xd9-\xdc".force_encoding('ASCII-8BIT'), 'AAAAAAEEEEIIIIOOOOOUUUU')
-    newstr.tr!("\xe0-\xe5\xe8-\xeb\xec-\xef\xf2-\xf6\xf9-\xfc".force_encoding('ASCII-8BIT'), 'aaaaaaeeeeiiiiooooouuuu')
+    newstr = str.tr("\x92\x93\x94".dup.force_encoding('ASCII-8BIT'), "'''")
+    newstr.tr!("\xc0-\xc5\xc8-\xcb\xcc-\xcf\xd2-\xd6\xd9-\xdc".dup.force_encoding('ASCII-8BIT'), 'AAAAAAEEEEIIIIOOOOOUUUU')
+    newstr.tr!("\xe0-\xe5\xe8-\xeb\xec-\xef\xf2-\xf6\xf9-\xfc".dup.force_encoding('ASCII-8BIT'), 'aaaaaaeeeeiiiiooooouuuu')
     return newstr
   end
 
@@ -963,11 +963,11 @@ EOM
   end
 
   def get_lang(buf, html_flag)
-    reg_euc = Regexp.compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}".force_encoding('EUC-JP'))
-    reg_sjis = Regexp.compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}".force_encoding('SHIFT_JIS'))
-    reg_utf8 = Regexp.compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}".force_encoding('UTF-8'))
-    reg_jis = Regexp.compile('\\x1b\\x24[\\x42\\x40]'.force_encoding('ASCII-8BIT'))
-    reg_gb18030_possible = Regexp.compile('[\x80-\x9f]'.force_encoding('ASCII-8BIT'))
+    reg_euc = Regexp.compile("[\xa1\xa2-\xa1\xbc\xa4\xa1-\xa4\xf3\xa5\xa1-\xa5\xf6]{4}".dup.force_encoding('EUC-JP'))
+    reg_sjis = Regexp.compile("[\x81\x40-\x81\x5b\x82\x9f-\x82\xf1\x83\x40-\x83\x96]{2}".dup.force_encoding('SHIFT_JIS'))
+    reg_utf8 = Regexp.compile("[\xe3\x80\x80-\xe3\x80\x82\xe3\x81\x81-\xe3\x82\x93\xe3\x82\xa1-\xe3\x83\xb6]{4}".dup.force_encoding('UTF-8'))
+    reg_jis = Regexp.compile('\\x1b\\x24[\\x42\\x40]'.dup.force_encoding('ASCII-8BIT'))
+    reg_gb18030_possible = Regexp.compile('[\x80-\x9f]'.dup.force_encoding('ASCII-8BIT'))
     gb18030_possible = false
     buf.each do |str|
       str = decode_character_reference2u(str) if html_flag
@@ -1080,7 +1080,7 @@ EOM
         @method = proc { |s| block(s) }
       when 'mecab'
         @method = proc { |s| mecab(s) }
-        meishi_euc = "\xcc\xbe\xbb\xec".force_encoding('ASCII-8BIT')
+        meishi_euc = "\xcc\xbe\xbb\xec".dup.force_encoding('ASCII-8BIT')
         meishi_sjis = meishi_euc.encode('SHIFT_JIS', 'EUC-JP').force_encoding('ASCII-8BIT')
         meishi_utf8 = meishi_euc.encode('UTF-8', 'EUC-JP').force_encoding('ASCII-8BIT')
         @m = MeCab::Tagger.new('-Ochasen')

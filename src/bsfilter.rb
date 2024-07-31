@@ -1255,6 +1255,7 @@ EOM
             ''
           end
         end
+        content = NKF.nkf('-e -X -Z0 -m0', content);
         content = NKF.nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?'))
       else
         content = latin2ascii(content)

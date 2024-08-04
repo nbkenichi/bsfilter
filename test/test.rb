@@ -1,5 +1,5 @@
 # encoding: utf-8
-# -*-Ruby-*- $Id: test.rb,v 1.16 2023/12/26 05:54:06 nabeken Exp $
+# -*-Ruby-*-
 
 load '../src/bsfilter.rb'
 require 'test/unit'
@@ -16,7 +16,7 @@ class DummyFH
   end
   def print(*args)
     @buf.push(*args.flatten.dup)
-    @buf.map{|str| str.force_encoding('ASCII-8BIT')}
+    @buf.map{|str| str.dup.force_encoding('ASCII-8BIT')}
     @buf = @buf.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join}
   end
   def printf(format, *args)
@@ -300,8 +300,8 @@ class TestGetLang < Test::Unit::TestCase
     assert_equal(1, @bsfilter.count_message(/lang ja sjis/))
   end
 
-  def test_sjis_base64_iso_2202_jp
-    @files = ["testcases/sjis_base64_iso_2202_jp"]
+  def test_sjis_base64_iso_2202_jp_typo
+    @files = ["testcases/sjis_base64_iso_2202_jp_typo"]
     @bsfilter.run(@files)
     assert_equal(1, @bsfilter.count_message(/lang ja sjis/))
   end
@@ -665,16 +665,27 @@ class TestHeaderParser < Test::Unit::TestCase
     assert_equal(9, @bsfilter.count_message(/^tokenizer date/), "^tokenizer date")
   end
 
+  def test_mime_q_iso_2022_jp
+    @files = ["testcases/mime_q_iso_2022_jp"]
+    @bsfilter.setup($default_options)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    assert_equal(1, @bsfilter.count_message(/^tokenizer from 匿名/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject word/), "^tokenizer subject")
+    assert_equal(1, @bsfilter.count_message(/^tokenizer subject 特別/), "^tokenizer subject")
+  end
+
   def test_mime_b_iso_2022_jp
     @files = ["testcases/mime_b_iso_2022_jp"]
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
     assert_equal(1, @bsfilter.count_message(/^tokenizer subject 花見/), "^tokenizer subject")
+    assert_equal(2, @bsfilter.count_message(/^tokenizer subject 猛暑/), "^tokenizer subject")
   end
 
-  def test_mime_b_iso_2202_jp
-    @files = ["testcases/mime_b_iso_2202_jp"]
+  def test_mime_b_iso_2202_jp_typo
+    @files = ["testcases/mime_b_iso_2202_jp_typo"]
     @bsfilter.setup($default_options)
     @bsfilter.use_dummyfh
     @bsfilter.run(@files)
@@ -916,7 +927,7 @@ class TestTokenizerOptionCombination < Test::Unit::TestCase
                         "--mark-in-token @", "--ignore-plain-text-part", "--ignore-after-last-atag"]
   end
 
-  def test_all
+  def test_option_combination
     i = 0
     imax = 2 ** @option_elements.length
 

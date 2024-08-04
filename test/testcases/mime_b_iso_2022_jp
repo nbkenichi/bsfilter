@@ -1,8 +1,11 @@
-Subject: =?iso-2202-jp?B?GyRCJCoyVjgrGyhC?=
+Subject: =?iso-2022-jp?B?GyRCJCoyVjgrGyhC?=
+ =?iso-2022-jp?B?IBskQkxUPWsbKEIgGyRCTFQ9axsoQg==?=
 To: user@example.com
 From: user@example.com
 Mime-Version: 1.0
 Content-Type: Text/Plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 
-iso-2202-jp is typo
+typical iso-2022-jp MIME-B encoding
+
+

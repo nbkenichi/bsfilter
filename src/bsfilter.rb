@@ -274,7 +274,7 @@ class Bsfilter
   end
 
   def u2eucjp(str)
-    return NKF.nkf('-e -E -X -Z0', str.encode('EUC-JP', 'UTF-8', undef: :replace, invalid: :replace))
+    return NKF.nkf('-e -E -X -Z0', str.encode('EUC-JP', 'UTF-8', undef: :replace, invalid: :replace)).validate_encoding
   end
 
   def u2latin(str)
@@ -1241,21 +1241,11 @@ EOM
       next unless (@options['refer-all-header'] || @options['refer-header'][header])
 
       if (lang == 'ja')
-        content.gsub!(/=\?utf-8\?([bq])\?(\S*)\?=/i) do |_s|
-          b_or_q = ::Regexp.last_match(1)
-          encoded_str = ::Regexp.last_match(2)
-          if (@options['utf-8'])
-            decoded_str = if (b_or_q =~ /q/i)
-                            encoded_str.unpack('M*').to_s
-                          else
-                            encoded_str.unpack('m*').to_s
-                          end
-            u2eucjp(decoded_str)
-          else
-            ''
-          end
+        if (content =~ /=\?utf-8\?([bq])/i) && (! @options['utf-8'])
+          content = ''
+        else
+          content = NKF.nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?')).validate_encoding
         end
-        content = NKF.nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?'))
       else
         content = latin2ascii(content)
       end
@@ -1527,7 +1517,7 @@ EOM
           lang = Default_Language
         end
       else
-        str = NKF.nkf('-e -X -Z0', str)
+        str = NKF.nkf('-e -X -Z0', str).validate_encoding
       end
     else
       str = latin2ascii(str)
@@ -3455,6 +3445,9 @@ class String
     else
       self
     end
+  end
+  def validate_encoding
+    self.encode(self.encoding, self.encoding, undef: :replace, invalid: :replace)
   end
 end
 

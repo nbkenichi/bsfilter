@@ -1415,7 +1415,7 @@ EOM
     end
 
     if (lang == 'ja')
-      str.gsub!(Regexp.compile("^[ -\\~]*[\|\>]+".dup.force_encoding('EUC-JP')), '')
+      str = str.gsub(Regexp.compile("^[ -\\~]*[\|\>]+".dup.force_encoding('EUC-JP')), '')
       str.gsub!(Regexp.compile("^[ \\t\xa1\xa1]+".dup.force_encoding('EUC-JP')), '') # delete white space
       str.gsub!(Regexp.compile('(\\r?\\n){2,}'.dup.force_encoding('EUC-JP')), ' ') # keep multiple newline as space
       str.gsub!(Regexp.compile('[\\r\\n]+'.dup.force_encoding('EUC-JP')), '') # delete newline

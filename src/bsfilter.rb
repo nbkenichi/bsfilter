@@ -2679,9 +2679,9 @@ EOM
               pop_proxy_socket.write(response.join) # return response to MUA
             end
           end
-        rescue TimeoutError
+        rescue Timeout::Error
           if (@options['verbose'])
-            @options['message-fh'].printf("Timeout error %s %s %s\n", pop_server, pop_port,
+            @options['message-fh'].printf("Timeout::Error error %s %s %s\n", pop_server, pop_port,
                                           pop_proxy_port)
           end
         rescue

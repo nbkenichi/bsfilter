@@ -2681,7 +2681,7 @@ EOM
           end
         rescue Timeout::Error
           if (@options['verbose'])
-            @options['message-fh'].printf("Timeout::Error error %s %s %s\n", pop_server, pop_port,
+            @options['message-fh'].printf("Timeout::Error exception %s %s %s\n", pop_server, pop_port,
                                           pop_proxy_port)
           end
         rescue

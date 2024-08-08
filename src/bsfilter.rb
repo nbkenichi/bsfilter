@@ -325,9 +325,9 @@ EOM
       end
 
       fh = File.open(file, 'rb')
-      @options['message-fh'].printf("start reading %s\n", file)
+      @options['message-fh'].printf("start reading %s\n", file) if (@options['debug'])
       yield fh
-      @options['message-fh'].printf("finish reading %s\n", file)
+      @options['message-fh'].printf("finish reading %s\n", file) if (@options['debug'])
       fh.close
     end
   end
@@ -407,7 +407,7 @@ EOM
           v = value(category, token) || 0
           sub_scalar(category, token, (v * (old_count - min_size).to_f / old_count.to_f).ceil)
           if (@options['debug'] && ! value(category, token))
-            @options['message-fh'].printf("deleted %s %s\n", category, token.to_utf8)
+            @options['message-fh'].printf("deleted %s %s\n", category, token.to_log_codeset)
           end
         end
       end
@@ -469,7 +469,7 @@ EOM
     def show_new_token(db)
       db.each_ct do |category, token|
         if (!value(category, token) || value(category, token).zero?)
-          @options['message-fh'].printf("new %s %s\n", category, token.to_utf8)
+          @options['message-fh'].printf("new %s %s\n", category, token.to_log_codeset)
         end
       end
     end
@@ -750,7 +750,7 @@ EOM
       end
       if (@options['debug'] && dirty)
         key_cts.sort.each do |(c, t)|
-          @options['message-fh'].printf("close %s %s %s %f\n", @filename, c, t.to_utf8, value(c, t))
+          @options['message-fh'].printf("close %s %s %s %f\n", @filename, c, t.to_log_codeset, value(c, t))
         end
       end
       @dbm.close
@@ -1290,12 +1290,12 @@ EOM
 
       content.scan(reg_token).each do |token|
         head_db.add_scalar(header, token, 1) if (token.length < 20)
-        @options['message-fh'].printf("tokenizer %s %s\n", header, token.to_utf8) if (@options['debug'])
+        @options['message-fh'].printf("tokenizer %s %s\n", header, token.to_log_codeset) if (@options['debug'])
       end
       if (lang == 'ja')
         @jtokenizer.split(content.gsub(/\s+/, '')).each do |token|
           head_db.add_scalar(header, token, 1)
-          @options['message-fh'].printf("tokenizer %s %s\n", header, token.to_utf8) if (@options['debug'])
+          @options['message-fh'].printf("tokenizer %s %s\n", header, token.to_log_codeset) if (@options['debug'])
         end
       end
     end
@@ -1369,7 +1369,7 @@ EOM
   end
 
   def i2utf8(i)
-    u2utf8([i].pack('U'))
+    return([i].pack('U').normalize_sequence)
   end
 
   def i2ascii(i)
@@ -1448,12 +1448,12 @@ EOM
         token.scan(reg_token2).each do |token2|
           if (token2.length < 20)
             url_hash[token2] += 1
-            @options['message-fh'].printf("tokenizer %s %s\n", 'url', token2.to_utf8) if (@options['debug'])
+            @options['message-fh'].printf("tokenizer %s %s\n", 'url', token2.to_log_codeset) if (@options['debug'])
           end
         end
       elsif (token.length < 20)
         body_hash[token] += 1
-        @options['message-fh'].printf("tokenizer C %s %s\n", 'body', token.to_utf8) if (@options['debug'])
+        @options['message-fh'].printf("tokenizer C %s %s\n", 'body', token.to_log_codeset) if (@options['debug'])
       end
     end
 
@@ -1469,7 +1469,7 @@ EOM
       str.split.each do |s|
         @jtokenizer.split(s).each do |token|
           body_hash[token] += 1
-          @options['message-fh'].printf("tokenizer ja %s %s\n", 'body', token.to_utf8) if (@options['debug'])
+          @options['message-fh'].printf("tokenizer ja %s %s\n", 'body', token.to_log_codeset) if (@options['debug'])
         end
       end
     end
@@ -1925,7 +1925,7 @@ EOM
         pminus *= FLOAT.new(1.0 - probability, c)
         qminus *= FLOAT.new(probability, c)
         if (@options['debug'])
-          @options['message-fh'].printf("word probability %s %s %d %f\n", category, token.to_utf8, c,
+          @options['message-fh'].printf("word probability %s %s %d %f\n", category, token.to_log_codeset, c,
                                         probability)
         end
       end
@@ -3509,19 +3509,16 @@ EOM
 end
 
 class String
-  def to_utf8
-    if (Bsfilter::LOG_CODESET)
-      if (self.encoding != Encoding::ASCII_8BIT)
-        return self.dup.encode(Bsfilter::LOG_CODESET, self.encoding, undef: :replace, invalid: :replace)
-      else
-        return self.dup
-      end
-    else
-        return self.dup
-    end
+  def to_log_codeset
+    return self.encode(Bsfilter::LOG_CODESET, self.encoding, undef: :replace, invalid: :replace)
   end
+
+  def to_utf8
+    return self.encode('UTF-8', self.encoding, undef: :replace, invalid: :replace)
+  end
+
   def normalize_sequence
-    self.encode(self.encoding, self.encoding, undef: :replace, invalid: :replace)
+    return self.encode(self.encoding, self.encoding, undef: :replace, invalid: :replace)
   end
 end
 

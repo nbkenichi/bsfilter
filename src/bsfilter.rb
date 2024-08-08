@@ -1143,7 +1143,7 @@ EOM
         @@Reg_katakana = Regexp.compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".dup.force_encoding('EUC-JP'))
         @@Reg_kanji_katakana = Regexp.compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
         @@Reg_not_kanji_katakana = Regexp.compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
-    end
+      end
     end
 
     def split(str)

@@ -67,6 +67,7 @@ class Bsfilter
 
   Default_icon_number = 32_512
 
+  Default_db_codeset = 'UTF-8'.freeze
   Clean_ext = '.clean'.freeze
   Spam_ext = '.spam'.freeze
   Prob_ext = '.prob'.freeze
@@ -274,7 +275,11 @@ class Bsfilter
   end
 
   def u2eucjp(str)
-    return NKF.nkf('-e -E -X -Z0', str.encode('EUC-JP', 'UTF-8', undef: :replace, invalid: :replace)).validate_encoding
+    return NKF.nkf('-e -E -X -Z0', str.encode('EUC-JP', 'UTF-8', undef: :replace, invalid: :replace)).normalize_sequence
+  end
+
+  def u2utf8(str)
+    return str.encode('UTF-8', 'UTF-8', undef: :replace, invalid: :replace).normalize_sequence
   end
 
   def u2latin(str)
@@ -283,6 +288,10 @@ class Bsfilter
 
   def gb180302eucjp(str)
     return str.encode('EUC-JP', 'BIG5', undef: :replace, invalid: :replace)
+  end
+
+  def gb180302u(str)
+    return str.encode('UTF-8', 'BIG5', undef: :replace, invalid: :replace)
   end
 
   def open_ro(file)
@@ -316,7 +325,9 @@ EOM
       end
 
       fh = File.open(file, 'rb')
+      @options['message-fh'].printf("start reading %s\n", file)
       yield fh
+      @options['message-fh'].printf("finish reading %s\n", file)
       fh.close
     end
   end
@@ -506,6 +517,14 @@ EOM
       @hash.size
     end
 
+    def dump
+      @hash.each_key do |category|
+        @hash[category].each_key do |token|
+          p [category, token, token.encoding]
+        end
+      end
+    end
+
     def each_ct
       @hash.each_key do |category|
         @hash[category].each_key do |token|
@@ -612,7 +631,12 @@ EOM
 
     def each_ct
       @dbm.each_key do |ct|
-        (category, token) = ct.force_encoding('ASCII-8BIT').split(Regexp.new(MAGIC), 2)
+        if (@options['db-codeset'] == 'UTF-8')
+          converted_ct = NKF.nkf('-w -X -Z0', ct).normalize_sequence
+        else
+          converted_ct = NKF.nkf('-e -X -Z0', ct).normalize_sequence
+        end
+        (category, token) = converted_ct.split(Regexp.new(MAGIC), 2)
         yield(category, token) if (category && token)
       end
     end
@@ -726,7 +750,7 @@ EOM
       end
       if (@options['debug'] && dirty)
         key_cts.sort.each do |(c, t)|
-          @options['message-fh'].printf("%s %s %s %f\n", @filename, c, t.to_utf8, value(c, t))
+          @options['message-fh'].printf("close %s %s %s %f\n", @filename, c, t.to_utf8, value(c, t))
         end
       end
       @dbm.close
@@ -1072,7 +1096,8 @@ EOM
   end
 
   class Jtokenizer
-    def initialize(method)
+    def initialize(method, codeset)
+      @codeset = codeset
       case method
       when 'bigram'
         @method = proc { |s| bigram(s) }
@@ -1108,16 +1133,23 @@ EOM
       else
         raise "internal error: unknown method #{method}"
       end
+      if (codeset == 'UTF-8')
+        @@Reg_kanji = Regexp.compile("[\xe4\xb8\x80-\xe9\xbf\xbf]+".dup.force_encoding('UTF-8'))
+        @@Reg_katakana = Regexp.compile("[\xE3\x83\xBC\xe3\x82\xa0-\xe3\x83\xba]+".dup.force_encoding('UTF-8'))
+        @@Reg_kanji_katakana = Regexp.compile("[\xe4\xb8\x80-\xe9\xbf\xbf\xe3\x82\xa0-\xe3\x83\xba]".dup.force_encoding('UTF-8'))
+        @@Reg_not_kanji_katakana = Regexp.compile("[^\xe4\xb8\x80-\xe9\xbf\xbf\xE3\x83\xBC\xe3\x82\xa0-\xe3\x83\xba]".dup.force_encoding('UTF-8'))
+      else
+        @@Reg_kanji = Regexp.compile("[\xb0\xa1-\xf4\xa4]+".dup.force_encoding('EUC-JP'))
+        @@Reg_katakana = Regexp.compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".dup.force_encoding('EUC-JP'))
+        @@Reg_kanji_katakana = Regexp.compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
+        @@Reg_not_kanji_katakana = Regexp.compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
+    end
     end
 
     def split(str)
       @method.call(str)
     end
 
-    Reg_kanji = Regexp.compile("[\xb0\xa1-\xf4\xa4]+".dup.force_encoding('EUC-JP'))
-    Reg_katakana = Regexp.compile("[\xa1\xbc\xa5\xa1-\xa5\xf6]+".dup.force_encoding('EUC-JP'))
-    Reg_kanji_katakana = Regexp.compile("[\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
-    Reg_not_kanji_katakana = Regexp.compile("[^\xb0\xa1-\xf4\xa4\xa1\xbc\xa5\xa1-\xa5\xf6]".dup.force_encoding('EUC-JP'))
 
     def kakasi(str)
       str = str.gsub(/[\x00-\x7f]/, ' ')
@@ -1125,8 +1157,8 @@ EOM
 
       array = []
       Kakasi.kakasi('-oeuc -w', str).scan(/\S+/).each do |token|
-        token.gsub!(Reg_not_kanji_katakana, '')
-        array.push(token) if ((token =~ Reg_kanji) || (token.length > 2))
+        token.gsub!(@@Reg_not_kanji_katakana, '')
+        array.push(token) if ((token =~ @@Reg_kanji) || (token.length > 2))
       end
       return array
     end
@@ -1158,10 +1190,10 @@ EOM
           # Skip KIGOU
         when "\xcc\xbe\xbb\xec".dup.force_encoding('EUC-JP')
           # MEISHI
-          array.push(token) if ((token =~ Reg_kanji_katakana) || (token.bytesize > 2))
+          array.push(token) if ((token =~ @@Reg_kanji_katakana) || (token.bytesize > 2))
         else
-          token.gsub!(Reg_not_kanji_katakana, '')
-          array.push(token) if ((token =~ Reg_kanji) || (token.bytesize > 2))
+          token.gsub!(@@Reg_not_kanji_katakana, '')
+          array.push(token) if ((token =~ @@Reg_kanji) || (token.bytesize > 2))
         end
         node = node.next
       end
@@ -1179,25 +1211,24 @@ EOM
         hinshi = ::Regexp.last_match(1)
         token = ::Regexp.last_match(2)
         if (hinshi == "\xcc\xbe\xbb\xec")
-          array.push(token) if ((token =~ Reg_kanji_katakana) || (token.length > 2))
+          array.push(token) if ((token =~ @@Reg_kanji_katakana) || (token.length > 2))
         else
-          token.gsub!(Reg_not_kanji_katakana, '')
-          array.push(token) if ((token =~ Reg_kanji) || (token.length > 2))
+          token.gsub!(@@Reg_not_kanji_katakana, '')
+          array.push(token) if ((token =~ @@Reg_kanji) || (token.length > 2))
         end
       end
       return array
     end
 
     def block(str)
-      tokens = str.scan(Reg_kanji)
-      tokens.concat(str.scan(Reg_katakana))
+      tokens = str.scan(@@Reg_kanji)
+      tokens.concat(str.scan(@@Reg_katakana))
       return tokens
     end
 
     def bigram(str)
       tokens = []
-
-      str.scan(Reg_kanji).each do |token|
+      str.scan(@@Reg_kanji).each do |token|
         case token.length
         when 1, 2
           tokens.push(token)
@@ -1208,7 +1239,7 @@ EOM
           end
         end
       end
-      tokens.concat(str.scan(Reg_katakana))
+      tokens.concat(str.scan(@@Reg_katakana))
       return tokens
     end
   end
@@ -1243,13 +1274,15 @@ EOM
       if (lang == 'ja')
         if (content =~ /=\?utf-8\?([bq])/i) && (! @options['utf-8'])
           content = ''
+        elsif (@options['db-codeset'] == 'UTF-8')
+          content = NKF.nkf('-w -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?')).normalize_sequence
         else
-          content = NKF.nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?')).validate_encoding
+          content = NKF.nkf('-e -X -Z0', content.gsub(/\?(iso-2202-jp|shift-jis)\?/i, '?ISO-2022-JP?')).normalize_sequence
         end
       else
         content = latin2ascii(content)
       end
-
+      
       unless content.valid_encoding?
         # Scrub str
         content = content.each_char.map { |c| c.valid_encoding? ? c : '' }.join
@@ -1261,7 +1294,6 @@ EOM
       end
       if (lang == 'ja')
         @jtokenizer.split(content.gsub(/\s+/, '')).each do |token|
-          token.force_encoding('ASCII-8BIT')
           head_db.add_scalar(header, token, 1)
           @options['message-fh'].printf("tokenizer %s %s\n", header, token.to_utf8) if (@options['debug'])
         end
@@ -1280,7 +1312,6 @@ EOM
       (db, buf) = tokenize_body(lang, headers, buf, separators, delimiters)
       db.time = Time.new
       db.language = Default_Language unless db.language
-      ##      db.language = Default_Language if (@options["unified-db"])
       return db
     end
 
@@ -1329,12 +1360,16 @@ EOM
     body_db.file_count = 1
     body_db.time = Time.new
     body_db.language = Default_Language unless body_db.language
-    ##    body_db.language = Default_Language if (@options["unified-db"])
+
     return body_db
   end
 
   def i2eucjp(i)
     u2eucjp([i].pack('U'))
+  end
+
+  def i2utf8(i)
+    u2utf8([i].pack('U'))
   end
 
   def i2ascii(i)
@@ -1370,12 +1405,20 @@ EOM
                  if (hex_or_dec =~ /^x(.*)/i)
                    hex_str = ::Regexp.last_match(1)
                    if (lang == 'ja')
-                     i2eucjp(hex_str.hex)
+                     if (@options['db-codeset'] == 'UTF-8')
+                       i2utf8(hex_str.hex)
+                     else
+                       i2eucjp(hex_str.hex)
+                     end
                    else
                      i2ascii(hex_str.hex)
                    end
                  elsif (lang == 'ja')
-                   i2eucjp(hex_or_dec.to_i)
+                   if (@options['db-codeset'] == 'UTF-8')
+                     i2utf8(hex_or_dec.to_i)
+                   else
+                     i2eucjp(hex_or_dec.to_i)
+                   end
                  else
                    i2ascii(hex_or_dec.to_i)
                  end
@@ -1415,13 +1458,16 @@ EOM
     end
 
     if (lang == 'ja')
-      str = str.gsub(Regexp.compile("^[ -\\~]*[\|\>]+".dup.force_encoding('EUC-JP')), '')
-      str.gsub!(Regexp.compile("^[ \\t\xa1\xa1]+".dup.force_encoding('EUC-JP')), '') # delete white space
-      str.gsub!(Regexp.compile('(\\r?\\n){2,}'.dup.force_encoding('EUC-JP')), ' ') # keep multiple newline as space
-      str.gsub!(Regexp.compile('[\\r\\n]+'.dup.force_encoding('EUC-JP')), '') # delete newline
+      str = str.gsub(Regexp.compile("^[ -\\~]*[\|\>]+".dup.force_encoding(@options['db-codeset'])), '')
+      if (@options['db-codeset'] == 'UTF-8')
+        str.gsub!(Regexp.compile("^[ \\t\xe3\x80\x80]+".dup.force_encoding(@options['db-codeset'])), '') # delete white space
+      else
+        str.gsub!(Regexp.compile("^[ \\t\xa1\xa1]+".dup.force_encoding(@options['db-codeset'])), '') # delete white space
+      end
+      str.gsub!(Regexp.compile('(\\r?\\n){2,}'.dup.force_encoding(@options['db-codeset'])), ' ') # keep multiple newline as space
+      str.gsub!(Regexp.compile('[\\r\\n]+'.dup.force_encoding(@options['db-codeset'])), '') # delete newline
       str.split.each do |s|
         @jtokenizer.split(s).each do |token|
-          token.force_encoding('ASCII-8BIT')
           body_hash[token] += 1
           @options['message-fh'].printf("tokenizer ja %s %s\n", 'body', token.to_utf8) if (@options['debug'])
         end
@@ -1506,18 +1552,28 @@ EOM
     if (lang == 'ja')
       if (code == 'utf8')
         if (@options['utf-8'])
-          str = u2eucjp(str)
+          if (@options['db-codeset'] == 'EUC-JP')
+            str = u2eucjp(str)
+          else
+            str = str.force_encoding('UTF-8').normalize_sequence
+          end
         else
           lang = Default_Language # can't use iconv / stop ja tokenizer
         end
       elsif (code == 'gb18030')
         if (@options['utf-8'])
-          str = gb180302eucjp(str)
+          if (@options['db-codeset'] == 'UTF-8')
+            str = gb180302u(str)
+          else
+            str = gb180302eucjp(str)
+          end
         else
           lang = Default_Language
         end
+      elsif (@options['db-codeset'] == 'UTF-8')
+        str = NKF.nkf('-w -X -Z0', str).normalize_sequence
       else
-        str = NKF.nkf('-e -X -Z0', str).validate_encoding
+        str = NKF.nkf('-e -X -Z0', str).normalize_sequence
       end
     else
       str = latin2ascii(str)
@@ -1579,6 +1635,7 @@ EOM
       body_str = str
       tag_str = ''
     end
+
     (body_hash, url_body_hash) = tokenize_str(body_str, lang)
     (tag_hash, url_tag_hash) = tokenize_str(tag_str, lang)
 
@@ -1974,8 +2031,10 @@ EOM
 
       	--export-probability
       		export the probability database (for debugging purpose)
+
+
       OPTIONS
-              --homedir directory
+        --homedir directory
       		specify the name of the bsfilter\'s home directory
       		If this option is not used, a directory specified with the environment variable "BSFILTERHOME" is used
       		If the variable "BSFILTERHOME" is not defined, ".bsfilter" directory under your home is used
@@ -1985,7 +2044,7 @@ EOM
       		specify the name of the bsfilter\'s configuration file
       		"bsfilter.conf" in bsfilter\'s home directory is used by default
 
-              --max-line number
+        --max-line number
       		check and/or study the first number of lines
       		default is #{Default_max_line}. 0 means all
 
@@ -2113,10 +2172,12 @@ EOM
         --disable-utf-8
                 disable utf-8 support
 
-      	--refer-header header[,header...]
+        --db-codeset UTF-8|EUC-JP
+                specify codeset for DB and export. "#{Default_db_codeset}" by default
+
+       	--refer-header header[,header...]
       		refer specified headers of mails
-      		"#{Default_refer_header}"
-      		by default
+      		"#{Default_refer_header}" by default
 
       	--refer-all-header
       		refer all headers of mails
@@ -2134,7 +2195,7 @@ EOM
       	--ignore-after-last-atag
       		ignore text after last "A" tag
 
-              --mark-in-token "characters"
+        --mark-in-token "characters"
       		specify characters which are allowable in a token
       		"#{Default_mark_in_token}" by default
 
@@ -2289,8 +2350,13 @@ EOM
     while (str = fh.gets)
       str.chomp!
       next if (str =~ /^\s*#/)
+      if (@options['db-codeset'] == 'UTF-8')
+        converted_str = NKF.nkf('-w -X -Z0', str).normalize_sequence
+      else
+        converted_str = NKF.nkf('-e -X -Z0', str).normalize_sequence
+      end
 
-      (lang, category, token, val) = str.split
+      (lang, category, token, val) = converted_str.split
       val = val.to_f.to_i
       if (category == '.internal')
         dbs[lang].file_count = dbs[lang].file_count + val if (token == 'file_count')
@@ -3014,7 +3080,6 @@ EOM
       ['--config-file', GetoptLong::REQUIRED_ARGUMENT],
       ['--pid-file', GetoptLong::REQUIRED_ARGUMENT],
       ['--db', GetoptLong::REQUIRED_ARGUMENT],
-      ##                     ["--unified-db", GetoptLong::NO_ARGUMENT],
       ['--max-line', GetoptLong::REQUIRED_ARGUMENT],
       ['--export-clean', GetoptLong::NO_ARGUMENT],
       ['--export-spam', GetoptLong::NO_ARGUMENT],
@@ -3037,6 +3102,7 @@ EOM
       ['--sub-spam', '-S', GetoptLong::NO_ARGUMENT],
       ['--disable-degeneration', '-D', GetoptLong::NO_ARGUMENT],
       ['--disable-utf-8', GetoptLong::NO_ARGUMENT],
+      ['--db-codeset', GetoptLong::REQUIRED_ARGUMENT],
       ['--ignore-body', '-B', GetoptLong::NO_ARGUMENT],
       ['--refer-header', GetoptLong::REQUIRED_ARGUMENT],
       ['--refer-all-header', GetoptLong::NO_ARGUMENT],
@@ -3132,6 +3198,16 @@ EOM
     options['header-prefix'] = Default_header_prefix unless (options['header-prefix'])
     options['spam-subject-prefix'] = Default_spam_subject_prefix unless (options['spam-subject-prefix'])
 
+    options['db-codeset'] = Default_db_codeset unless (options['db-codeset'])
+    case options['db-codeset']
+    when 'UTF-8'
+      ## ok
+    when 'EUC-JP'
+      ## ok
+    else
+      soft_raise(format("#{$PROGRAM_NAME}: unsupported argument `%s' for --db-codeset\n", options['db-codeset']))
+    end
+    
     options['db'] = Default_db unless (options['db'])
     case options['db']
     when 'ndbm'
@@ -3167,13 +3243,7 @@ EOM
     else
       soft_raise(format("#{$PROGRAM_NAME}: unsupported argument `%s' for --jtokenizer or -j\n", options['jtokenizer']))
     end
-    @jtokenizer = Jtokenizer.new(options['jtokenizer'])
-
-    ##    if (options["unified-db"])
-    ##      options["languages"] = [Default_Language]
-    ##    else
-    ##      options["languages"] = Languages
-    ##    end
+    @jtokenizer = Jtokenizer.new(options['jtokenizer'], options['db-codeset'])
 
     options['languages'] = Languages
 
@@ -3441,12 +3511,16 @@ end
 class String
   def to_utf8
     if (Bsfilter::LOG_CODESET)
-      return dup.encode(Bsfilter::LOG_CODESET, Encoding::EUC_JP, undef: :replace, invalid: :replace)
+      if (self.encoding != Encoding::ASCII_8BIT)
+        return self.dup.encode(Bsfilter::LOG_CODESET, self.encoding, undef: :replace, invalid: :replace)
+      else
+        return self.dup
+      end
     else
-      self
+        return self.dup
     end
   end
-  def validate_encoding
+  def normalize_sequence
     self.encode(self.encoding, self.encoding, undef: :replace, invalid: :replace)
   end
 end

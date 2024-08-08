@@ -16,7 +16,7 @@ class DummyFH
   end
   def print(*args)
     @buf.push(*args.flatten.dup)
-    @buf.map{|str| str.dup.force_encoding('ASCII-8BIT')}
+    @buf.map{|str| str.dup.force_encoding('UTF-8')}
     @buf = @buf.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join}
   end
   def printf(format, *args)

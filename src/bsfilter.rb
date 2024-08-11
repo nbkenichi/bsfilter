@@ -624,33 +624,6 @@ EOM
       @dbm.size
     end
 
-    def convert_ct(ct)
-      if (NKF.guess(ct) == Encoding::Shift_JIS) ## this must be UTF
-        if (@options['encoding'] == Encoding::UTF_8)
-          converted_ct = NKF.nkf('-w -W -X -Z0', ct).normalize_sequence # utf2utf
-        else
-          converted_ct = NKF.nkf('-e -W -X -Z0', ct).normalize_sequence # utf2euc
-        end
-      else
-        if (@options['encoding'] == Encoding::UTF_8)
-          converted_ct = NKF.nkf('-w -X -Z0', ct).normalize_sequence
-        else
-          converted_ct = NKF.nkf('-e -X -Z0', ct).normalize_sequence
-        end
-      end
-      return converted_ct
-    end
-
-#    def to_db
-#      token_db = TokenDB.new(@language)
-#      @dbm.each do |ct, v|
-#        (category, token) = convert_ct(ct).split(Regexp.new(MAGIC), 2)
-#        token_db.set(category, token, v)
-#        token_db.file_count = @file_count
-#      end
-#      return token_db
-#    end
-
     def clear
       @dbm.clear
       @file_count = 0
@@ -660,8 +633,6 @@ EOM
     def each_ct
       @dbm.each_key do |ct|
         (category, token) = ct.force_encoding('ASCII-8BIT').split(Regexp.new(MAGIC), 2)
-#        (category, token) = ct.split(Regexp.new(MAGIC), 2)
-#        (category, token) = convert_ct(ct).split(Regexp.new(MAGIC), 2)
         yield(category, token) if (category && token)
       end
     end
@@ -2394,11 +2365,7 @@ EOM
     while (str = fh.gets)
       str.chomp!
       next if (str =~ /^\s*#/)
-      if (@options['encoding'] == Encoding::UTF_8)
-        converted_str = NKF.nkf('-w -X -Z0', str).normalize_sequence
-      else
-        converted_str = NKF.nkf('-e -X -Z0', str).normalize_sequence
-      end
+      converted_str = str.guess_nkf(@options['encoding'])
       (lang, category, token, val) = converted_str.split
       val = val.to_f.to_i
       if (category == '.internal')
@@ -3573,6 +3540,24 @@ class String
 
   def to_utf8
     return self.encode(Encoding::UTF_8, self.encoding, undef: :replace, invalid: :replace)
+  end
+
+
+  def guess_nkf(encoding)
+    if (NKF.guess(self) == Encoding::Shift_JIS) ## this must be UTF
+      if (encoding == Encoding::UTF_8)
+        str = NKF.nkf('-w -W -X -Z0', self).normalize_sequence # utf2utf
+      else
+        str = NKF.nkf('-e -W -X -Z0', self).normalize_sequence # utf2euc
+      end
+    else
+      if (encoding == Encoding::UTF_8)
+        str =  NKF.nkf('-w -X -Z0', self).normalize_sequence
+      else
+        str = NKF.nkf('-e -X -Z0', self).normalize_sequence
+      end
+    end
+    return str
   end
 
   def normalize_sequence

@@ -4,8 +4,19 @@
 load '../src/bsfilter.rb'
 require 'test/unit'
 require 'fileutils'
+require 'stringio'
 
 $default_options = ["--homedir", ".", "-v", "-d", "--show-process"]
+
+class String
+  def auto_force_encoding
+    if (NKF.guess(self) == Encoding::Shift_JIS)
+      self.force_encoding(Encoding::UTF_8)
+    else
+      self.force_encoding(NKF.guess(self))
+    end
+  end
+end
 
 class DummyFH
   def initialize
@@ -15,9 +26,7 @@ class DummyFH
   def sync=(*args)
   end
   def print(*args)
-    @buf.push(*args.flatten.dup)
-    @buf.map{|str| str.dup.force_encoding('UTF-8')}
-    @buf = @buf.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join}
+    @buf.push(*args.join.split(/(\r\n|\r|\n)/).each_slice(2).to_a.map{|s| s.join})
   end
   def printf(format, *args)
     @buf.push(sprintf(format, *args))
@@ -35,7 +44,7 @@ class Bsfilter
   end
 
   def grep_message(pattern)
-    options["message-fh"].buf.map{|str| str.force_encoding('UTF-8')}.grep(pattern)
+    options["message-fh"].buf.map{|str| str}.grep(pattern)
   end
 
   def count_message(pattern)
@@ -43,7 +52,7 @@ class Bsfilter
   end
 
   def grep_pipe(pattern)
-    options["pipe-fh"].buf.map{|str| str.force_encoding('UTF-8')}.grep(pattern)
+    options["pipe-fh"].buf.map{|str| str}.grep(pattern)
   end
 
   def count_pipe(pattern)
@@ -919,6 +928,188 @@ class TestHtmlParser < Test::Unit::TestCase
     unlink_all
   end
 end
+
+class TestEncoding < Test::Unit::TestCase
+  def setup
+    unlink_all
+    @files = ["testcases/iso_2022_jp_plain"]
+    @bsfilter = Bsfilter::new
+  end
+
+  def buffer_auto_force_encoding(inbuf)
+    buf = []
+    inbuf.each do |str|
+      str.auto_force_encoding
+      buf.push(str)
+    end
+    return buf
+  end
+
+  def test_encoding_ndbm_euc_jp
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "ndbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 2".encode(Encoding::EUC_JP))).count)
+  end
+
+  def test_encoding_ndbm_utf_8
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "ndbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 2".encode(Encoding::UTF_8))).count)
+  end
+
+  def test_encoding_ndbm_utf_8_euc_jp
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.setup($default_options + ["--db", "ndbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "ndbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 1".encode(Encoding::UTF_8))).count)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 1".encode(Encoding::EUC_JP))).count)
+  end
+
+
+  def test_encoding_sdbm_euc_jp
+    @bsfilter.setup($default_options + ["--db", "sdbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "sdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 2".encode(Encoding::EUC_JP))).count)
+  end
+
+  def test_encoding_sdbm_utf_8
+    @bsfilter.setup($default_options + ["--db", "sdbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "sdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 2".encode(Encoding::UTF_8))).count)
+  end
+
+  def test_encoding_sdbm_utf_8_euc_jp
+    @bsfilter.setup($default_options + ["--db", "sdbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.setup($default_options + ["--db", "sdbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "sdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 1".encode(Encoding::UTF_8))).count)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 1".encode(Encoding::EUC_JP))).count)
+  end
+
+  def test_encoding_gdbm_euc_jp
+    @bsfilter.setup($default_options + ["--db", "gdbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "gdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 2".encode(Encoding::EUC_JP))).count)
+  end
+
+  def test_encoding_gdbm_utf_8
+    @bsfilter.setup($default_options + ["--db", "gdbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "gdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 2".encode(Encoding::UTF_8))).count)
+  end
+
+  def test_encoding_gdbm_utf_8_euc_jp
+    @bsfilter.setup($default_options + ["--db", "gdbm", "-c", "--encoding", "UTF-8"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+    @bsfilter.setup($default_options + ["--db", "gdbm", "-c", "--encoding", "EUC-JP"])
+    @bsfilter.use_dummyfh
+    @bsfilter.run(@files)
+
+    @bsfilter.setup($default_options + ["--db", "gdbm", "--export-clean"])
+    $stdout = StringIO.new
+    @bsfilter.use_dummyfh
+    @bsfilter.run([])
+
+    out = $stdout.string
+    buf = buffer_auto_force_encoding(out.lines)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::UTF_8}.grep(Regexp::compile("朝顔 1".encode(Encoding::UTF_8))).count)
+    assert_equal(1, buf.filter{|str| str.encoding == Encoding::EUC_JP}.grep(Regexp::compile("朝顔 1".encode(Encoding::EUC_JP))).count)
+  end
+  
+  def teardown
+    unlink_all
+  end
+end
+
 
 class TestTokenizerOptionCombination < Test::Unit::TestCase
   def setup

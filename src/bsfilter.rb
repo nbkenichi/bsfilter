@@ -493,6 +493,14 @@ EOM
       return array
     end
 
+    def key_cts_raw
+      array = []
+      each_ct_raw do |c, t|
+        array.push([c, t])
+      end
+      return array
+    end
+    
     def export(fh)
       each_ct_raw do |category, token|
         fh.printf("%s %s %s %g\n", @language, category, token, value(category, token)) if value(category, token)
@@ -651,7 +659,9 @@ EOM
 
     def each_ct
       @dbm.each_key do |ct|
-        (category, token) = convert_ct(ct).split(Regexp.new(MAGIC), 2)
+        (category, token) = ct.force_encoding('ASCII-8BIT').split(Regexp.new(MAGIC), 2)
+#        (category, token) = ct.split(Regexp.new(MAGIC), 2)
+#        (category, token) = convert_ct(ct).split(Regexp.new(MAGIC), 2)
         yield(category, token) if (category && token)
       end
     end
@@ -672,6 +682,7 @@ EOM
     def add_hash(hash)
       @dirty = true
       hash.flatten(MAGIC) do |k, v|
+        k.force_encoding('ASCII-8BIT')
         if (@dbm[k])
           @dbm[k] = (@dbm[k].to_f + v.to_f).to_s
         else
@@ -692,6 +703,7 @@ EOM
     def sub_hash(hash)
       @dirty = true
       hash.flatten(MAGIC) do |k, v|
+        k.force_encoding('ASCII-8BIT')
         if (@dbm[k])
           if (@dbm[k].to_f > v.to_f)
             @dbm[k] = (@dbm[k].to_f - v.to_f).to_s
@@ -703,7 +715,9 @@ EOM
     end
 
     def value(category, token)
-      v = @dbm[category + MAGIC + token]
+      k = category + MAGIC + token
+      k.force_encoding('ASCII-8BIT')
+      v = @dbm[k]
       return v.to_f if v
 
       return nil
@@ -712,7 +726,9 @@ EOM
     def set(category, token, v)
       @dirty = true
       begin
-        @dbm[category + MAGIC + token] = v.to_s
+        k = category + MAGIC + token
+        k.force_encoding('ASCII-8BIT')
+        @dbm[k] = v.to_s
       rescue
         @options['message-fh'].puts($ERROR_INFO.inspect, category + MAGIC + token, v.to_s) if (@options['verbose'])
         @options['message-fh'].puts($ERROR_POSITION) if (@options['debug'])
@@ -772,8 +788,10 @@ EOM
                                       Process.pid)
       end
       if (@options['debug'] && dirty)
-        key_cts.sort.each do |(c, t)|
-          @options['message-fh'].printf("close %s %s %s %f\n", @filename, c, t.to_log_encoding, value(c, t))
+        key_cts_raw.sort.each do |(c, t)|
+          v = value(c, t)
+          t.auto_force_encoding
+          @options['message-fh'].printf("close %s %s %s %f\n", @filename, c, t.to_log_encoding, v)
         end
       end
       @dbm.close
@@ -2198,8 +2216,8 @@ EOM
         --disable-utf-8
                 disable utf-8 support
 
-        --encoding UTF-8|Encoding::EUC_JP
-                specify encoding for DB and export. "#{Default_encoding}" by default
+        --encoding UTF-8|EUC-JP
+                specify encoding for DB. "#{Default_encoding}" by default
 
        	--refer-header header[,header...]
       		refer specified headers of mails
@@ -3537,6 +3555,14 @@ EOM
 end
 
 class String
+  def auto_force_encoding
+    if (NKF.guess(self) == Encoding::Shift_JIS)
+      self.force_encoding(Encoding::UTF_8)
+    else
+      self.force_encoding(NKF.guess(self))
+    end
+  end
+
   def to_log_encoding
     if (Bsfilter::LOG_ENCODING)
       return self.encode(Bsfilter::LOG_ENCODING, self.encoding, undef: :replace, invalid: :replace)

@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 ## -*-Ruby-*-
-## Copyright (C) 2003-2024 NABEYA Kenichi
+## Copyright (C) 2003-2026 NABEYA Kenichi
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ class Bsfilter
   Default_imap_port = '143'.freeze
   Default_imap_auth = 'auto'.freeze
   Default_imap_auth_preference = %w[cram-md5 login loginc].freeze
+  Default_imap_folder_separator = '/'.freeze
 
   Default_icon_number = 32_512
 
@@ -2040,6 +2041,9 @@ EOM
       	--imap-reset-seen-flag
       		reset SEEN flag when bsfilter moves or modifies mails
 
+        --imap-folder-separator character
+                specify separator between a folder name and its message sequence number. #{Default_imap_folder_separator} by default
+
       	--pop
       		work as POP proxy
 
@@ -2439,7 +2443,7 @@ EOM
   end
 
   def imap_get_target_uids(imap, mailbox)
-    if (mailbox =~ %r{(.*)/(.*)})
+    if (mailbox =~ %r{\A(.+)#{@options['imap-folder-separator']}(\d+)\z})
       mailbox = ::Regexp.last_match(1)
       seqs = ::Regexp.last_match(2)
     else
@@ -3010,6 +3014,7 @@ EOM
       ['--imap-fetch-unseen', GetoptLong::NO_ARGUMENT],
       ['--imap-fetch-unflagged', GetoptLong::NO_ARGUMENT],
       ['--imap-reset-seen-flag', GetoptLong::NO_ARGUMENT],
+      ['--imap-folder-separator', GetoptLong::REQUIRED_ARGUMENT],
       ['--homedir', GetoptLong::REQUIRED_ARGUMENT],
       ['--config-file', GetoptLong::REQUIRED_ARGUMENT],
       ['--pid-file', GetoptLong::REQUIRED_ARGUMENT],
@@ -3203,6 +3208,7 @@ EOM
 
     options['imap-auth'] = options['imap-auth'] || Default_imap_auth
     options['imap-auth-preference'] = Default_imap_auth_preference # can't modify with command line option
+    options['imap-folder-separator'] = options['imap-folder-separator'] || Default_imap_folder_separator
 
     options['utf-8'] = if ((!options['disable-utf-8']))
                          true
